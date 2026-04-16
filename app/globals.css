@@ -1,0 +1,62 @@
+:root {
+  --bg-color: #F9F9F7;
+  --text-main: #2A2E2B;
+  --accent: #B35B3E;
+  --border: #E2E2DE;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Natural Paper Texture Overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.input-minimal {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #D1D1CD;
+  padding: 12px 0;
+  outline: none;
+  transition: border-color 0.4s ease;
+  font-size: 1.125rem;
+  font-weight: 300;
+  box-sizing: border-box;
+}
+
+.input-minimal:focus {
+  border-color: var(--accent);
+}
+
+.btn-minimal {
+  width: 100%;
+  background-color: var(--text-main);
+  color: white;
+  padding: 16px;
+  border: none;
+  border-radius: 50px;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  cursor: pointer;
+  transition: all 0.5s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  margin-top: 10px;
+}
+
+.btn-minimal:hover {
+  background-color: var(--accent);
+}
