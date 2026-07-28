@@ -136,14 +136,14 @@ export default function PartnerRegistry() {
           </motion.div>
         )}
 
-        {/* STEP 2: HIGH-VISIBILITY QR ASSET */}
+        {/* STEP 2: PERMANENT HIGH-VISIBILITY QR ASSET */}
         {step === 2 && (
           <motion.div key="step2" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center' }}>
             <div style={{ background: '#ffffff', padding: '35px', borderRadius: '16px', display: 'inline-block', boxShadow: '0 25px 50px rgba(0,0,0,0.1)', border: '1px solid #eee' }}>
               <QRCodeCanvas 
                 value={`${typeof window !== 'undefined' ? window.location.origin : ''}/guest?ref=${refCode}`} 
-                size={280}        // Large size for easy scanning
-                level={"H"}       // High error correction (best for phone cameras)
+                size={280}
+                level={"H"}
                 includeMargin={true}
                 fgColor="#000000" 
                 bgColor="#ffffff" 
