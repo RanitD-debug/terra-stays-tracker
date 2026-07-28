@@ -5,35 +5,58 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
 import { 
   BarChart, Users, Building, RefreshCw, CheckCircle2, 
-  QrCode, Printer, X, ExternalLink, Calendar, Search, MessageSquare, Phone
+  QrCode, Printer, X, ExternalLink, Calendar, Search, MessageSquare, Phone, AlertCircle
 } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [leads, setLeads] = useState<any[]>([]);
   const [affiliates, setAffiliates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'leads' | 'partners'>('leads');
   const [selectedPartnerQR, setSelectedPartnerQR] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
+    setErrorMessage(null);
     
-    // Fetch all leads and affiliates from Supabase ordered by creation timestamp
-    const { data: leadsData } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
-    const { data: affiliatesData } = await supabase.from('affiliates').select('*').order('created_at', { ascending: false });
+    try {
+      // Fetch all leads without relying on created_at sorting
+      const { data: leadsData, error: leadsErr } = await supabase
+        .from('leads')
+        .select('*');
 
-    if (leadsData) setLeads(leadsData);
-    if (affiliatesData) setAffiliates(affiliatesData);
+      if (leadsErr) {
+        console.error("Leads Fetch Error:", leadsErr);
+        setErrorMessage(`Leads Table Error: ${leadsErr.message}`);
+      } else if (leadsData) {
+        setLeads(leadsData.reverse()); // Show newest entries first
+      }
 
-    setLoading(false);
+      // Fetch all affiliates without relying on created_at sorting
+      const { data: affiliatesData, error: affErr } = await supabase
+        .from('affiliates')
+        .select('*');
+
+      if (affErr) {
+        console.error("Affiliates Fetch Error:", affErr);
+        setErrorMessage(prev => prev ? `${prev} | Affiliates Error: ${affErr.message}` : `Affiliates Table Error: ${affErr.message}`);
+      } else if (affiliatesData) {
+        setAffiliates(affiliatesData.reverse()); // Show newest entries first
+      }
+    } catch (err: any) {
+      console.error("Unexpected fetch error:", err);
+      setErrorMessage(err.message || "Failed to connect to database");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  // Format timestamps nicely (e.g., "29 Jul 2026, 02:30 PM")
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -47,18 +70,15 @@ export default function AdminDashboard() {
     });
   };
 
-  // Helper to map ref_code to Business Name
   const getBusinessName = (refCode: string) => {
     const match = affiliates.find(a => a.ref_code === refCode);
     return match ? match.business_name : 'Direct / Unknown';
   };
 
-  // Stats calculations
   const totalLeads = leads.length;
   const totalPartners = affiliates.length;
   const totalNightsBooked = leads.reduce((acc, curr) => acc + (Number(curr.nights) || 0), 0);
 
-  // Filtered lists based on search
   const filteredLeads = leads.filter(lead => 
     lead.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     lead.phone?.includes(searchTerm) ||
@@ -83,7 +103,7 @@ export default function AdminDashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1 style={{ fontSize: '1.8rem', fontWeight: 300, color: '#1B2B22', margin: 0 }}>Terra Stays Control Center</h1>
-            <p style={{ color: '#888', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Comprehensive partner tracking, scan logs, and timestamped records</p>
+            <p style={{ color: '#888', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Comprehensive partner tracking, scan logs, and partner records</p>
           </div>
           <button 
             onClick={fetchData} 
@@ -93,6 +113,16 @@ export default function AdminDashboard() {
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> {loading ? "Refreshing..." : "Refresh Live Data"}
           </button>
         </div>
+
+        {/* ERROR BANNER IF ANY */}
+        {errorMessage && (
+          <div style={{ background: '#FDF2F2', border: '1px solid #F87171', color: '#991B1B', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
+            <AlertCircle size={18} />
+            <div>
+              <strong>Database Query Notice:</strong> {errorMessage}
+            </div>
+          </div>
+        )}
 
         {/* METRICS SUMMARY CARDS */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
@@ -152,7 +182,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* TAB 1: TIMESTAMPED GUEST SCAN LEADS */}
+        {/* TAB 1: GUEST SCAN LEADS */}
         {activeTab === 'leads' && (
           <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #E2E2DE', padding: '1.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 400, color: '#1B2B22', marginBottom: '1.5rem' }}>Guest QR Scan Audit Log</h2>
@@ -164,7 +194,6 @@ export default function AdminDashboard() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #E2E2DE', color: '#888' }}>
-                      <th style={{ padding: '12px' }}>SCAN DATE & TIME</th>
                       <th style={{ padding: '12px' }}>GUEST NAME</th>
                       <th style={{ padding: '12px' }}>PHONE</th>
                       <th style={{ padding: '12px' }}>REFERRING BOUTIQUE</th>
@@ -179,12 +208,6 @@ export default function AdminDashboard() {
                       const businessName = getBusinessName(lead.ref_code);
                       return (
                         <tr key={idx} style={{ borderBottom: '1px solid #F0F0EC' }}>
-                          <td style={{ padding: '12px', color: '#666', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <Calendar size={13} color="#888" />
-                              {formatDate(lead.created_at)}
-                            </div>
-                          </td>
                           <td style={{ padding: '12px', fontWeight: 600, color: '#1B2B22' }}>{lead.guest_name}</td>
                           <td style={{ padding: '12px', color: '#555' }}>{lead.phone}</td>
                           <td style={{ padding: '12px', color: '#1B2B22', fontWeight: 500 }}>{businessName}</td>
@@ -215,7 +238,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* TAB 2: REGISTERED BOUTIQUES WITH TIMESTAMPS & QR CODES */}
+        {/* TAB 2: REGISTERED BOUTIQUES WITH QR CODES */}
         {activeTab === 'partners' && (
           <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #E2E2DE', padding: '1.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 400, color: '#1B2B22', marginBottom: '1.5rem' }}>Boutique Partner Registry & QR Assets</h2>
@@ -227,7 +250,6 @@ export default function AdminDashboard() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #E2E2DE', color: '#888' }}>
-                      <th style={{ padding: '12px' }}>REGISTRATION DATE</th>
                       <th style={{ padding: '12px' }}>BUSINESS NAME</th>
                       <th style={{ padding: '12px' }}>OWNER</th>
                       <th style={{ padding: '12px' }}>REF CODE</th>
@@ -241,16 +263,10 @@ export default function AdminDashboard() {
                       const guestUrl = `${origin}/guest?ref=${partner.ref_code}`;
                       return (
                         <tr key={idx} style={{ borderBottom: '1px solid #F0F0EC' }}>
-                          <td style={{ padding: '12px', color: '#666', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <Calendar size={13} color="#888" />
-                              {formatDate(partner.created_at)}
-                            </div>
-                          </td>
                           <td style={{ padding: '12px', fontWeight: 600, color: '#1B2B22' }}>{partner.business_name}</td>
                           <td style={{ padding: '12px', color: '#555' }}>{partner.owner_name}</td>
                           <td style={{ padding: '12px' }}>
-                            <span style={{ background: '#F0EFEA', padding: '4px 8px', borderRadius: '4px', fontFamily: 'monospace', fontWeight: 700, color: '#1B2B22' }}>
+                            <span style={{ background: '#F0EFEA', padding: '4px 8px', borderRadius: '4px', fontFamily: 'monospace', fontWeight 700, color: '#1B2B22' }}>
                               {partner.ref_code}
                             </span>
                           </td>
