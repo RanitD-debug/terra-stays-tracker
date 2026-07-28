@@ -218,7 +218,7 @@ export default function AdminDashboard() {
         {/* TAB 2: REGISTERED BOUTIQUES WITH TIMESTAMPS & QR CODES */}
         {activeTab === 'partners' && (
           <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #E2E2DE', padding: '1.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight 400, color: '#1B2B22', marginBottom: '1.5rem' }}>Boutique Partner Registry & QR Assets</h2>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 400, color: '#1B2B22', marginBottom: '1.5rem' }}>Boutique Partner Registry & QR Assets</h2>
             
             {filteredPartners.length === 0 ? (
               <p style={{ color: '#aaa', fontSize: '0.9rem', textAlign: 'center', padding: '2rem 0' }}>No boutique partners match your search.</p>
@@ -250,7 +250,7 @@ export default function AdminDashboard() {
                           <td style={{ padding: '12px', fontWeight: 600, color: '#1B2B22' }}>{partner.business_name}</td>
                           <td style={{ padding: '12px', color: '#555' }}>{partner.owner_name}</td>
                           <td style={{ padding: '12px' }}>
-                            <span style={{ background: '#F0EFEA', padding: '4px 8px', borderRadius: '4px', fontFamily: 'monospace', fontWeight 700, color: '#1B2B22' }}>
+                            <span style={{ background: '#F0EFEA', padding: '4px 8px', borderRadius: '4px', fontFamily: 'monospace', fontWeight: 700, color: '#1B2B22' }}>
                               {partner.ref_code}
                             </span>
                           </td>
