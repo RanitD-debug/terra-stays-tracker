@@ -4,8 +4,8 @@ import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
 import { 
-  BarChart, Users, Building, RefreshCw, CheckCircle2, 
-  QrCode, Printer, X, ExternalLink, Calendar, Search, MessageSquare, Phone, AlertCircle
+  BarChart, Users, Building, RefreshCw, 
+  QrCode, Printer, X, ExternalLink, Search, MessageSquare, Phone, AlertCircle
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -22,7 +22,7 @@ export default function AdminDashboard() {
     setErrorMessage(null);
     
     try {
-      // Fetch all leads without relying on created_at sorting
+      // Fetch all leads
       const { data: leadsData, error: leadsErr } = await supabase
         .from('leads')
         .select('*');
@@ -31,10 +31,10 @@ export default function AdminDashboard() {
         console.error("Leads Fetch Error:", leadsErr);
         setErrorMessage(`Leads Table Error: ${leadsErr.message}`);
       } else if (leadsData) {
-        setLeads(leadsData.reverse()); // Show newest entries first
+        setLeads([...leadsData].reverse()); // Show newest entries first
       }
 
-      // Fetch all affiliates without relying on created_at sorting
+      // Fetch all affiliates
       const { data: affiliatesData, error: affErr } = await supabase
         .from('affiliates')
         .select('*');
@@ -43,7 +43,7 @@ export default function AdminDashboard() {
         console.error("Affiliates Fetch Error:", affErr);
         setErrorMessage(prev => prev ? `${prev} | Affiliates Error: ${affErr.message}` : `Affiliates Table Error: ${affErr.message}`);
       } else if (affiliatesData) {
-        setAffiliates(affiliatesData.reverse()); // Show newest entries first
+        setAffiliates([...affiliatesData].reverse()); // Show newest entries first
       }
     } catch (err: any) {
       console.error("Unexpected fetch error:", err);
@@ -56,19 +56,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchData();
   }, []);
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
 
   const getBusinessName = (refCode: string) => {
     const match = affiliates.find(a => a.ref_code === refCode);
@@ -266,7 +253,7 @@ export default function AdminDashboard() {
                           <td style={{ padding: '12px', fontWeight: 600, color: '#1B2B22' }}>{partner.business_name}</td>
                           <td style={{ padding: '12px', color: '#555' }}>{partner.owner_name}</td>
                           <td style={{ padding: '12px' }}>
-                            <span style={{ background: '#F0EFEA', padding: '4px 8px', borderRadius: '4px', fontFamily: 'monospace', fontWeight 700, color: '#1B2B22' }}>
+                            <span style={{ background: '#F0EFEA', padding: '4px 8px', borderRadius: '4px', fontFamily: 'monospace', fontWeight: 700, color: '#1B2B22' }}>
                               {partner.ref_code}
                             </span>
                           </td>
