@@ -3,6 +3,7 @@ import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Send, Sparkles, User, Phone, Users, Moon, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient'; // Adjust path if your supabaseClient.js is located elsewhere
 
 function GuestFormContent() {
   const searchParams = useSearchParams();
@@ -27,36 +28,44 @@ function GuestFormContent() {
     const cleanPhone = guestPhone.trim();
     const cleanName = guestName.trim();
 
-    const newLead = {
-      id: Date.now().toString(),
-      guest_name: cleanName,
-      phone: cleanPhone,
-      guest_count: parseInt(guestCount) || 1,
-      nights: parseInt(nights) || 1,
-      ref_code: formattedRef,
-      status: 'Enquired',
-      total_amount: 0,
-      commission_amount: 0,
-      timestamp: new Date().toISOString()
-    };
-
-    // Save locally
+    // 1. Directly insert into Supabase database
     try {
+      const { error } = await supabase
+        .from('guest_scans')
+        .insert([
+          {
+            guest_phone: cleanPhone,
+            partner_source: formattedRef,
+            ref_code: formattedRef,
+            status: 'pending',
+            payment_taken: 0,
+            commission: 0
+          }
+        ]);
+
+      if (error) {
+        console.error('Supabase Insert Error:', error.message);
+      }
+    } catch (err) {
+      console.error('Failed to send to Supabase:', err);
+    }
+
+    // 2. Local fallback
+    try {
+      const newLead = {
+        id: Date.now().toString(),
+        guest_name: cleanName,
+        phone: cleanPhone,
+        guest_count: parseInt(guestCount) || 1,
+        nights: parseInt(nights) || 1,
+        ref_code: formattedRef,
+        status: 'Enquired',
+        timestamp: new Date().toISOString()
+      };
       const localLeads = JSON.parse(localStorage.getItem('ts_leads') || '[]');
       localLeads.unshift(newLead);
       localStorage.setItem('ts_leads', JSON.stringify(localLeads));
     } catch (e) {}
-
-    // Send to Central Server Store
-    try {
-      await fetch('/api/store', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'ADD_LEAD', payload: newLead })
-      });
-    } catch (serverErr) {
-      console.error("Central store send error:", serverErr);
-    }
 
     setSubmitting(false);
     setSubmitted(true);
