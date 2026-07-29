@@ -3,7 +3,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
-import { LogIn, KeyRound, Building, ArrowRight, AlertCircle } from 'lucide-react';
+import { LogIn, KeyRound, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 
 function LoginFormContent() {
   const router = useRouter();
@@ -11,7 +11,7 @@ function LoginFormContent() {
   const codeParam = searchParams.get('code') || '';
 
   const [refCode, setRefCode] = useState('');
-  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,9 +27,8 @@ function LoginFormContent() {
     setLoading(true);
 
     const cleanCode = refCode.trim().toUpperCase();
-    const cleanIdent = identifier.trim().toLowerCase();
 
-    // Query partner by ref_code
+    // Query partner by unique referral code
     const { data: partner, error: fetchErr } = await supabase
       .from('affiliates')
       .select('*')
@@ -39,16 +38,17 @@ function LoginFormContent() {
     setLoading(false);
 
     if (fetchErr || !partner) {
-      setError('Invalid referral code or credentials. Please check and try again.');
+      setError('Invalid referral code. Please check and try again.');
       return;
     }
 
-    if (cleanIdent && partner.business_name.toLowerCase() !== cleanIdent) {
-      setError('Business name / username does not match this referral code.');
+    // Verify password if recorded
+    if (partner.password && partner.password !== password) {
+      setError('Incorrect password for this referral code.');
       return;
     }
 
-    // Save session locally and redirect
+    // Save partner session locally and redirect
     localStorage.setItem('terra_partner', JSON.stringify(partner));
     router.push('/dashboard');
   };
@@ -62,7 +62,7 @@ function LoginFormContent() {
             <LogIn size={14} /> Partner Portal
           </div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 300, margin: '0 0 6px 0' }}>Welcome Back</h1>
-          <p style={{ color: '#888', fontSize: '0.85rem', margin: 0 }}>Log in with your Referral Code to view guest leads & payouts</p>
+          <p style={{ color: '#888', fontSize: '0.85rem', margin: 0 }}>Log in with your Referral Code and Password</p>
         </div>
 
         {error && (
@@ -74,27 +74,32 @@ function LoginFormContent() {
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px' }}>
-              <KeyRound size={14} /> Referral Code (e.g. BOUT1234 or INDV5678)
+              <KeyRound size={14} /> Referral Code
             </label>
             <input 
               type="text" 
+              name="username"
+              autoComplete="username"
               required 
-              placeholder="Enter Ref Code" 
+              placeholder="e.g. BOUT1234 or INDV5678" 
               value={refCode} 
               onChange={e => setRefCode(e.target.value)} 
-              style={{ width: '100%', padding: '12px', border: '1px solid #E2E2DE', borderRadius: '8px', fontSize: '0.9rem', outline: 'none', background: '#FAFAFA', fontFamily: 'monospace', textTransform: 'uppercase', fontWeight: 700 }}
+              style={{ width: '100%', padding: '12px', border: '1px solid #E2E2DE', borderRadius: '8px', fontSize: '0.95rem', outline: 'none', background: '#FAFAFA', fontFamily: 'monospace', textTransform: 'uppercase', fontWeight: 700 }}
             />
           </div>
 
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px' }}>
-              <Building size={14} /> Business Name / Unique Username (Optional)
+              <Lock size={14} /> Password
             </label>
             <input 
-              type="text" 
-              placeholder="Confirm business name or username" 
-              value={identifier} 
-              onChange={e => setIdentifier(e.target.value)} 
+              type="password" 
+              name="password"
+              autoComplete="current-password"
+              required 
+              placeholder="Enter your password" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
               style={{ width: '100%', padding: '12px', border: '1px solid #E2E2DE', borderRadius: '8px', fontSize: '0.85rem', outline: 'none', background: '#FAFAFA' }}
             />
           </div>

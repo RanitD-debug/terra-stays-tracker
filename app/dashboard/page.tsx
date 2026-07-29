@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
-import { Users, IndianRupee, LogOut, Printer, RefreshCw, CheckCircle2, Clock } from 'lucide-react';
+import { Users, IndianRupee, LogOut, Printer, RefreshCw, CheckCircle2, Clock, Download } from 'lucide-react';
 
 export default function PartnerDashboard() {
   const router = useRouter();
@@ -33,6 +33,19 @@ export default function PartnerDashboard() {
 
     if (data) setLeads([...data].reverse());
     setLoading(false);
+  };
+
+  const downloadQR = () => {
+    const canvas = document.getElementById('dash-qr-canvas') as HTMLCanvasElement;
+    if (canvas && partner) {
+      const pngUrl = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pngUrl;
+      downloadLink.download = `${partner.business_name.replace(/\s+/g, '_')}_TerraStays_QR.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
   };
 
   const handleLogout = () => {
@@ -82,7 +95,7 @@ export default function PartnerDashboard() {
         {/* MAIN SPLIT LAYOUT */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
           
-          {/* LEFT SIDE: QR CODE & PROFILE DETAILS */}
+          {/* LEFT SIDE: QR CODE & PROFILE */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             
             {/* QR CARD */}
@@ -92,15 +105,23 @@ export default function PartnerDashboard() {
               </span>
 
               <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #EDEDE9', display: 'inline-block', margin: '1.25rem 0' }}>
-                <QRCodeCanvas value={guestUrl} size={180} level={"H"} includeMargin={true} />
+                <QRCodeCanvas id="dash-qr-canvas" value={guestUrl} size={180} level={"H"} includeMargin={true} />
               </div>
 
-              <button 
-                onClick={() => window.print()}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
-              >
-                <Printer size={16} /> Print Standee Asset
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button 
+                  onClick={downloadQR}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', background: '#2B6A4B', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
+                >
+                  <Download size={16} /> Download QR Code Image
+                </button>
+                <button 
+                  onClick={() => window.print()}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', background: '#F0EFEA', color: '#1B2B22', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}
+                >
+                  <Printer size={16} /> Print Reception Standee
+                </button>
+              </div>
             </div>
 
             {/* ACCOUNT DETAILS CARD */}

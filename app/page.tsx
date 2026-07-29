@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from './supabaseClient';
 import { motion } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
-import { Building2, UserCheck, ShieldCheck, QrCode, ArrowRight, LogIn, AlertCircle } from 'lucide-react';
+import { Building2, UserCheck, ShieldCheck, QrCode, ArrowRight, LogIn, AlertCircle, Lock, Download } from 'lucide-react';
 
 export default function Home() {
   const router = useRouter();
@@ -16,6 +16,7 @@ export default function Home() {
   const [ownerName, setOwnerName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [upiId, setUpiId] = useState('');
+  const [password, setPassword] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,38 +25,41 @@ export default function Home() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!password || password.length < 4) {
+      setError('Please set a password of at least 4 characters.');
+      return;
+    }
+
     setLoading(true);
 
     const nameToRegister = businessName.trim();
-
-    // Check for duplicate username in Individual mode
-    if (accountType === 'individual') {
-      const { data: existingUser } = await supabase
-        .from('affiliates')
-        .select('business_name')
-        .ilike('business_name', nameToRegister);
-
-      if (existingUser && existingUser.length > 0) {
-        setError('This username is already taken. Please choose another unique username.');
-        setLoading(false);
-        return;
-      }
-    }
-
-    // Generate unique referral code
     const prefix = accountType === 'business' ? 'BOUT' : 'INDV';
     const generatedCode = `${prefix}${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const { error: insertError } = await supabase.from('affiliates').insert([
-      {
-        business_name: nameToRegister,
-        owner_name: ownerName,
-        whatsapp: whatsapp,
-        upi_id: upiId,
-        ref_code: generatedCode,
-        account_type: accountType
-      }
-    ]);
+    const payloadFull = {
+      business_name: nameToRegister,
+      owner_name: ownerName,
+      whatsapp: whatsapp,
+      upi_id: upiId,
+      ref_code: generatedCode,
+      account_type: accountType,
+      password: password
+    };
+
+    const payloadBase = {
+      business_name: `${nameToRegister} (${accountType.toUpperCase()}) - UPI: ${upiId} - Pass: ${password}`,
+      owner_name: ownerName,
+      whatsapp: whatsapp,
+      ref_code: generatedCode
+    };
+
+    let { error: insertError } = await supabase.from('affiliates').insert([payloadFull]);
+
+    if (insertError && insertError.message.includes("schema cache")) {
+      const fallback = await supabase.from('affiliates').insert([payloadBase]);
+      insertError = fallback.error;
+    }
 
     setLoading(false);
 
@@ -64,6 +68,19 @@ export default function Home() {
     } else {
       setRefCode(generatedCode);
       setStep('qr');
+    }
+  };
+
+  const downloadQR = () => {
+    const canvas = document.getElementById('partner-qr-canvas') as HTMLCanvasElement;
+    if (canvas) {
+      const pngUrl = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pngUrl;
+      downloadLink.download = `${businessName.replace(/\s+/g, '_')}_TerraStays_QR.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
     }
   };
 
@@ -86,7 +103,7 @@ export default function Home() {
 
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} style={{ background: '#fff', borderRadius: '20px', padding: '2.5rem', maxWidth: '460px', width: '100%', boxShadow: '0 12px 35px rgba(0,0,0,0.04)', border: '1px solid #E2E2DE' }}>
         
-        {/* STEP 1: POLICY ACCEPTANCE */}
+        {/* STEP 1: POLICY */}
         {step === 'policy' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2B6A4B', background: '#EAF4EE', padding: '6px 12px', borderRadius: '20px', width: 'fit-content', fontSize: '0.75rem', fontWeight: 600, marginBottom: '1.25rem' }}>
@@ -109,7 +126,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* STEP 2: SELECT ACCOUNT TYPE */}
+        {/* STEP 2: SELECT TYPE */}
         {step === 'select' && (
           <div>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 300, margin: '0 0 8px 0' }}>Register Account</h1>
@@ -118,7 +135,7 @@ export default function Home() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
               <div 
                 onClick={() => { setAccountType('business'); setStep('form'); }}
-                style={{ padding: '1.25rem', border: '1px solid #E2E2DE', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem', background: '#FAFAFA', transition: 'all 0.2s' }}
+                style={{ padding: '1.25rem', border: '1px solid #E2E2DE', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem', background: '#FAFAFA' }}
               >
                 <div style={{ background: '#1B2B22', color: '#fff', padding: '10px', borderRadius: '10px' }}><Building2 size={20} /></div>
                 <div>
@@ -129,7 +146,7 @@ export default function Home() {
 
               <div 
                 onClick={() => { setAccountType('individual'); setStep('form'); }}
-                style={{ padding: '1.25rem', border: '1px solid #E2E2DE', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem', background: '#FAFAFA', transition: 'all 0.2s' }}
+                style={{ padding: '1.25rem', border: '1px solid #E2E2DE', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem', background: '#FAFAFA' }}
               >
                 <div style={{ background: '#2B6A4B', color: '#fff', padding: '10px', borderRadius: '10px' }}><UserCheck size={20} /></div>
                 <div>
@@ -143,7 +160,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* STEP 3: REGISTRATION FORM */}
+        {/* STEP 3: FORM WITH GOOGLE PASSWORD SAVE SUPPORT */}
         {step === 'form' && (
           <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <h1 style={{ fontSize: '1.4rem', fontWeight: 300, margin: 0 }}>
@@ -158,10 +175,12 @@ export default function Home() {
 
             <div>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px' }}>
-                {accountType === 'business' ? 'Boutique / Business Name' : 'Unique Username'}
+                {accountType === 'business' ? 'Boutique / Business Name' : 'Username'}
               </label>
               <input 
                 type="text" 
+                name="username"
+                autoComplete="username"
                 required 
                 placeholder={accountType === 'business' ? 'e.g. Pine Retreat Resort' : 'e.g. ranit_explores'} 
                 value={businessName} 
@@ -206,6 +225,23 @@ export default function Home() {
               />
             </div>
 
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px' }}>
+                <Lock size={14} /> Create Login Password
+              </label>
+              <input 
+                type="password" 
+                name="password"
+                autoComplete="new-password"
+                required 
+                placeholder="Set a password for dashboard login" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                style={{ width: '100%', padding: '12px', border: '1px solid #E2E2DE', borderRadius: '8px', fontSize: '0.85rem', outline: 'none', background: '#FAFAFA' }}
+              />
+              <span style={{ fontSize: '0.72rem', color: '#888', marginTop: '4px', display: 'block' }}>Your browser / Google Passwords will ask to save this automatically.</span>
+            </div>
+
             <button 
               type="submit" 
               disabled={loading}
@@ -217,30 +253,33 @@ export default function Home() {
           </form>
         )}
 
-        {/* STEP 4: GENERATED QR CODE */}
+        {/* STEP 4: GENERATED QR CODE WITH DIRECT DOWNLOAD */}
         {step === 'qr' && (
           <div style={{ textAlign: 'center' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#EAF4EE', color: '#2B6A4B', padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, marginBottom: '1rem' }}>
               <QrCode size={14} /> Asset Generated
             </div>
             <h2 style={{ fontSize: '1.3rem', margin: '0 0 4px 0' }}>{businessName}</h2>
-            <p style={{ color: '#888', fontSize: '0.8rem', margin: '0 0 1.5rem 0' }}>
+            <p style={{ color: '#888', fontSize: '0.8rem', margin: '0 0 1.25rem 0' }}>
               Referral Code: <strong style={{ color: '#1B2B22', fontFamily: 'monospace' }}>{refCode}</strong>
             </p>
 
-            <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #E2E2DE', display: 'inline-block', marginBottom: '1.5rem' }}>
-              <QRCodeCanvas value={guestUrl} size={200} level={"H"} includeMargin={true} />
+            <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #E2E2DE', display: 'inline-block', marginBottom: '1.25rem' }}>
+              <QRCodeCanvas id="partner-qr-canvas" value={guestUrl} size={200} level={"H"} includeMargin={true} />
             </div>
 
-            <p style={{ fontSize: '0.8rem', color: '#666', marginBottom: '1.25rem' }}>
-              Save your referral code (<strong style={{ color: '#1B2B22' }}>{refCode}</strong>) to log into your partner dashboard anytime.
-            </p>
+            <button 
+              onClick={downloadQR}
+              style={{ width: '100%', padding: '12px', background: '#2B6A4B', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '1rem' }}
+            >
+              <Download size={16} /> Download QR Code Image
+            </button>
 
             <button 
               onClick={() => router.push(`/login?code=${refCode}`)}
               style={{ width: '100%', padding: '14px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              Go to Partner Dashboard Login <ArrowRight size={16} />
+              Go to Partner Login <ArrowRight size={16} />
             </button>
           </div>
         )}
