@@ -4,12 +4,14 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Users, IndianRupee, LogOut, Printer, RefreshCw, CheckCircle2, Clock, Download } from 'lucide-react';
+import { supabase } from '../supabaseClient'; // ADDED SUPABASE IMPORT
 
 export default function PartnerDashboard() {
   const router = useRouter();
   const [partner, setPartner] = useState<any>(null);
   const [leads, setLeads] = useState<any[]>([]);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('terra_partner');
@@ -19,30 +21,28 @@ export default function PartnerDashboard() {
     }
     const parsed = JSON.parse(saved);
     setPartner(parsed);
-    fetchCentralLeads(parsed.ref_code);
+    fetchSupabaseLeads(parsed.ref_code);
   }, []);
 
-  const fetchCentralLeads = async (refCode: string) => {
-    let localLeads: any[] = [];
+  // FIXED: Now fetching directly from Supabase 'guest_scans' table!
+  const fetchSupabaseLeads = async (refCode: string) => {
+    setLoading(true);
     try {
-      localLeads = JSON.parse(localStorage.getItem('ts_leads') || '[]');
-    } catch (e) {}
+      const { data, error } = await supabase
+        .from('guest_scans')
+        .select('*')
+        .eq('ref_code', refCode)
+        .order('created_at', { ascending: false });
 
-    let serverLeads: any[] = [];
-    try {
-      const res = await fetch('/api/store');
-      const data = await res.json();
-      if (data.leads) serverLeads = data.leads;
-    } catch (e) {}
-
-    const map = new Map();
-    [...localLeads, ...serverLeads].forEach(l => {
-      if (l.ref_code === refCode) {
-        map.set(l.id || `${l.guest_name}_${l.phone}`, l);
+      if (error) {
+        console.error("Error fetching partner leads:", error);
+      } else if (data) {
+        setLeads(data);
       }
-    });
-
-    setLeads(Array.from(map.values()).reverse());
+    } catch (e) {
+      console.error("Database connection exception:", e);
+    }
+    setLoading(false);
   };
 
   const downloadQR = () => {
@@ -70,7 +70,9 @@ export default function PartnerDashboard() {
 
   const totalEnquiries = leads.length;
   const confirmedLeads = leads.filter(l => l.status === 'Confirmed');
-  const totalEarningsINR = confirmedLeads.reduce((acc, curr) => acc + (Number(curr.commission_amount) || 0), 0);
+  
+  // FIXED: Changed 'commission_amount' to 'commission' to match database
+  const totalEarningsINR = confirmedLeads.reduce((acc, curr) => acc + (Number(curr.commission) || 0), 0);
 
   return (
     <div style={{ minHeight: '100vh', background: '#F7F6F2', color: '#1B2B22', fontFamily: 'sans-serif', padding: '2rem' }}>
@@ -87,10 +89,12 @@ export default function PartnerDashboard() {
 
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <button 
-              onClick={() => fetchCentralLeads(partner.ref_code)} 
+              onClick={() => fetchSupabaseLeads(partner.ref_code)} 
+              disabled={loading}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 16px', background: '#fff', border: '1px solid #E2E2DE', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
             >
-              <RefreshCw size={14} /> Refresh Live Leads
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> 
+              {loading ? "Syncing..." : "Refresh Live Leads"}
             </button>
             <button 
               onClick={() => setShowLogoutModal(true)}
@@ -183,7 +187,6 @@ export default function PartnerDashboard() {
                       <tr style={{ borderBottom: '1px solid #E2E2DE', color: '#888' }}>
                         <th style={{ padding: '10px' }}>GUEST NAME</th>
                         <th style={{ padding: '10px' }}>PHONE</th>
-                        <th style={{ padding: '10px' }}>DURATION</th>
                         <th style={{ padding: '10px' }}>STATUS</th>
                         <th style={{ padding: '10px', textAlign: 'right' }}>EARNED COMMISSION</th>
                       </tr>
@@ -193,15 +196,18 @@ export default function PartnerDashboard() {
                         const isConfirmed = lead.status === 'Confirmed';
                         return (
                           <tr key={idx} style={{ borderBottom: '1px solid #F0F0EC' }}>
-                            <td style={{ padding: '10px', fontWeight: 600 }}>{lead.guest_name}</td>
+                            <td style={{ padding: '10px', fontWeight: 600 }}>{lead.guest_name || 'Guest'}</td>
                             <td style={{ padding: '10px', color: '#666' }}>
-                              {isConfirmed ? lead.phone : `${lead.phone?.substring(0, 3)}*****${lead.phone?.slice(-2)}`}
+                              {isConfirmed ? lead.guest_phone : `${lead.guest_phone?.substring(0, 3) || '***'}*****${lead.guest_phone?.slice(-2) || '**'}`}
                             </td>
-                            <td style={{ padding: '10px', color: '#555' }}>{lead.guest_count} guest(s) · {lead.nights} night(s)</td>
                             <td style={{ padding: '10px' }}>
                               {isConfirmed ? (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#EAF4EE', color: '#2B6A4B', padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>
                                   <CheckCircle2 size={12} /> Confirmed
+                                </span>
+                              ) : lead.status === 'Paused' ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#FDF2F2', color: '#991B1B', padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>
+                                  Paused
                                 </span>
                               ) : (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#FFFBEB', color: '#B45309', padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>
@@ -210,7 +216,7 @@ export default function PartnerDashboard() {
                               )}
                             </td>
                             <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: isConfirmed ? '#2B6A4B' : '#888' }}>
-                              {isConfirmed ? `₹${Number(lead.commission_amount || 0).toLocaleString('en-IN')}` : 'Pending Admin Check'}
+                              {isConfirmed ? `₹${Number(lead.commission || 0).toLocaleString('en-IN')}` : 'Pending Admin Check'}
                             </td>
                           </tr>
                         );
