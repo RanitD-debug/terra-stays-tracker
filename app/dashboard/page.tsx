@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Users, IndianRupee, LogOut, Printer, RefreshCw, CheckCircle2, Clock, Download } from 'lucide-react';
@@ -10,7 +9,6 @@ export default function PartnerDashboard() {
   const router = useRouter();
   const [partner, setPartner] = useState<any>(null);
   const [leads, setLeads] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
@@ -21,18 +19,17 @@ export default function PartnerDashboard() {
     }
     const parsed = JSON.parse(saved);
     setPartner(parsed);
-    fetchLeads(parsed.ref_code);
+    fetchLocalLeads(parsed.ref_code);
   }, []);
 
-  const fetchLeads = async (refCode: string) => {
-    setLoading(true);
-    const { data } = await supabase
-      .from('leads')
-      .select('*')
-      .eq('ref_code', refCode);
-
-    if (data) setLeads([...data].reverse());
-    setLoading(false);
+  const fetchLocalLeads = (refCode: string) => {
+    try {
+      const allLeads = JSON.parse(localStorage.getItem('ts_leads') || '[]');
+      const matching = allLeads.filter((l: any) => l.ref_code === refCode);
+      setLeads(matching);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const downloadQR = () => {
@@ -70,18 +67,17 @@ export default function PartnerDashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#2B6A4B' }}>
-              {partner.account_type === 'business' ? 'Boutique Partner Console' : 'Individual Affiliate Console'}
+              Partner Console
             </span>
             <h1 style={{ fontSize: '1.8rem', fontWeight: 300, margin: '2px 0 0 0' }}>{partner.business_name}</h1>
           </div>
 
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <button 
-              onClick={() => fetchLeads(partner.ref_code)} 
-              disabled={loading}
+              onClick={() => fetchLocalLeads(partner.ref_code)} 
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 16px', background: '#fff', border: '1px solid #E2E2DE', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
             >
-              <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh Data
+              <RefreshCw size={14} /> Refresh Data
             </button>
             <button 
               onClick={() => setShowLogoutModal(true)}
@@ -92,12 +88,12 @@ export default function PartnerDashboard() {
           </div>
         </div>
 
-        {/* MAIN SPLIT LAYOUT */}
+        {/* SPLIT LAYOUT */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
           
-          {/* LEFT SIDE: QR CODE & PROFILE */}
+          {/* LEFT: QR CODE & PROFILE */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #E2E2DE', padding: '2rem', textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #E2E2DE', padding: '2rem', textAlign: 'center' }}>
               <span style={{ background: '#F0EFEA', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'monospace' }}>
                 REF: {partner.ref_code}
               </span>
@@ -117,13 +113,13 @@ export default function PartnerDashboard() {
                   onClick={() => window.print()}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', background: '#F0EFEA', color: '#1B2B22', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}
                 >
-                  <Printer size={16} /> Print Reception Standee
+                  <Printer size={16} /> Print Standee
                 </button>
               </div>
             </div>
 
-            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #E2E2DE', padding: '1.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 1rem 0' }}>Account & Payout Info</h3>
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #E2E2DE', padding: '1.5rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 1rem 0' }}>Account Info</h3>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: '0.85rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #FAFAFA', paddingBottom: '6px' }}>
@@ -142,10 +138,10 @@ export default function PartnerDashboard() {
             </div>
           </div>
 
-          {/* RIGHT SIDE: CHARTS & GUEST ENQUIRIES TABLE */}
+          {/* RIGHT: STATS & TABLE */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #E2E2DE', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #E2E2DE' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#888', marginBottom: '8px' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Total Enquiries</span>
                   <Users size={16} />
@@ -153,7 +149,7 @@ export default function PartnerDashboard() {
                 <p style={{ fontSize: '2rem', fontWeight: 400, margin: 0 }}>{totalEnquiries}</p>
               </div>
 
-              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #E2E2DE', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #E2E2DE' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#888', marginBottom: '8px' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Confirmed Payout</span>
                   <IndianRupee size={16} color="#2B6A4B" />
@@ -162,11 +158,11 @@ export default function PartnerDashboard() {
               </div>
             </div>
 
-            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #E2E2DE', padding: '1.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #E2E2DE', padding: '1.5rem' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 1.25rem 0' }}>Referred Guests & Booking Status</h3>
 
               {leads.length === 0 ? (
-                <p style={{ color: '#aaa', fontSize: '0.85rem', textAlign: 'center', padding: '2rem 0' }}>No guest scans recorded yet.</p>
+                <p style={{ color: '#aaa', fontSize: '0.85rem', textAlign: 'center', padding: '2rem 0' }}>No guest scans recorded yet for this code.</p>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
@@ -215,7 +211,7 @@ export default function PartnerDashboard() {
 
         </div>
 
-        {/* LOGOUT CONFIRMATION MODAL */}
+        {/* LOGOUT MODAL */}
         <AnimatePresence>
           {showLogoutModal && (
             <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}>

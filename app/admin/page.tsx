@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
 import { RefreshCw, CheckCircle2, X, PauseCircle, Download, Printer } from 'lucide-react';
@@ -8,54 +7,65 @@ import { RefreshCw, CheckCircle2, X, PauseCircle, Download, Printer } from 'luci
 export default function AdminDashboard() {
   const [leads, setLeads] = useState<any[]>([]);
   const [affiliates, setAffiliates] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'leads' | 'partners'>('leads');
   const [selectedPartnerQR, setSelectedPartnerQR] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Confirmation modal state for manual payment input
   const [confirmingLead, setConfirmingLead] = useState<any | null>(null);
   const [inputPayment, setInputPayment] = useState('');
   const [inputCommission, setInputCommission] = useState('');
 
-  const fetchData = async () => {
-    setLoading(true);
-    const { data: leadsData } = await supabase.from('leads').select('*');
-    const { data: affiliatesData } = await supabase.from('affiliates').select('*');
-
-    if (leadsData) setLeads([...leadsData].reverse());
-    if (affiliatesData) setAffiliates([...affiliatesData].reverse());
-    setLoading(false);
+  const loadLocalData = () => {
+    try {
+      const storedLeads = JSON.parse(localStorage.getItem('ts_leads') || '[]');
+      const storedAffiliates = JSON.parse(localStorage.getItem('ts_affiliates') || '[]');
+      setLeads(storedLeads);
+      setAffiliates(storedAffiliates);
+    } catch (e) {
+      console.error("Local storage read error", e);
+    }
   };
 
   useEffect(() => {
-    fetchData();
+    loadLocalData();
   }, []);
 
-  const handleConfirmBooking = async () => {
+  const handleConfirmBooking = () => {
     if (!confirmingLead) return;
 
     const totalAmt = parseFloat(inputPayment) || 0;
     const commAmt = parseFloat(inputCommission) || 0;
 
-    await supabase
-      .from('leads')
-      .update({
-        status: 'Confirmed',
-        total_amount: totalAmt,
-        commission_amount: commAmt
-      })
-      .eq('id', confirmingLead.id);
+    const updatedLeads = leads.map(lead => {
+      if (lead.id === confirmingLead.id) {
+        return {
+          ...lead,
+          status: 'Confirmed',
+          total_amount: totalAmt,
+          commission_amount: commAmt
+        };
+      }
+      return lead;
+    });
+
+    setLeads(updatedLeads);
+    localStorage.setItem('ts_leads', JSON.stringify(updatedLeads));
 
     setConfirmingLead(null);
     setInputPayment('');
     setInputCommission('');
-    fetchData();
   };
 
-  const handlePauseBooking = async (leadId: string) => {
-    await supabase.from('leads').update({ status: 'Paused' }).eq('id', leadId);
-    fetchData();
+  const handlePauseBooking = (leadId: string) => {
+    const updatedLeads = leads.map(lead => {
+      if (lead.id === leadId) {
+        return { ...lead, status: 'Paused' };
+      }
+      return lead;
+    });
+
+    setLeads(updatedLeads);
+    localStorage.setItem('ts_leads', JSON.stringify(updatedLeads));
   };
 
   const downloadPartnerQR = () => {
@@ -73,7 +83,7 @@ export default function AdminDashboard() {
 
   const getBusinessName = (refCode: string) => {
     const match = affiliates.find(a => a.ref_code === refCode);
-    return match ? match.business_name : 'Direct / Unknown';
+    return match ? match.business_name : 'Direct / Partner';
   };
 
   const totalLeads = leads.length;
@@ -83,16 +93,13 @@ export default function AdminDashboard() {
   const filteredLeads = leads.filter(lead => 
     lead.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     lead.phone?.includes(searchTerm) ||
-    lead.ref_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    getBusinessName(lead.ref_code).toLowerCase().includes(searchTerm.toLowerCase())
+    lead.ref_code?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredPartners = affiliates.filter(partner => 
     partner.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     partner.owner_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    partner.ref_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    partner.whatsapp?.includes(searchTerm) ||
-    partner.upi_id?.toLowerCase().includes(searchTerm.toLowerCase())
+    partner.ref_code?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -105,36 +112,35 @@ export default function AdminDashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1 style={{ fontSize: '1.8rem', fontWeight: 300, color: '#1B2B22', margin: 0 }}>Terra Stays Admin Console</h1>
-            <p style={{ color: '#888', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Manual payment approval, commission generator, and partner manager</p>
+            <p style={{ color: '#888', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Manual payment approval & partner manager</p>
           </div>
           <button 
-            onClick={fetchData} 
-            disabled={loading}
+            onClick={loadLocalData} 
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
           >
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> {loading ? "Refreshing..." : "Refresh Live Data"}
+            <RefreshCw size={14} /> Refresh Records
           </button>
         </div>
 
-        {/* METRICS SUMMARY */}
+        {/* METRICS */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
-          <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #E2E2DE', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+          <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #E2E2DE' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>Total Inbound Scans</span>
             <p style={{ fontSize: '2rem', fontWeight: 400, color: '#1B2B22', margin: '8px 0 0 0' }}>{totalLeads}</p>
           </div>
 
-          <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #E2E2DE', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+          <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #E2E2DE' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>Active Partners</span>
             <p style={{ fontSize: '2rem', fontWeight: 400, color: '#1B2B22', margin: '8px 0 0 0' }}>{totalPartners}</p>
           </div>
 
-          <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #E2E2DE', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+          <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #E2E2DE' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>Total Commission Approved</span>
             <p style={{ fontSize: '2rem', fontWeight: 600, color: '#2B6A4B', margin: '8px 0 0 0' }}>₹{totalCommissionDisbursed.toLocaleString('en-IN')}</p>
           </div>
         </div>
 
-        {/* SEARCH & TABS */}
+        {/* TABS & SEARCH */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', gap: '1rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid #E2E2DE' }}>
             <button onClick={() => setActiveTab('leads')} style={{ padding: '12px 18px', border: 'none', background: 'none', fontSize: '0.9rem', fontWeight: activeTab === 'leads' ? 700 : 400, color: activeTab === 'leads' ? '#1B2B22' : '#888', borderBottom: activeTab === 'leads' ? '2px solid #1B2B22' : 'none', cursor: 'pointer' }}>
@@ -154,9 +160,9 @@ export default function AdminDashboard() {
           />
         </div>
 
-        {/* TAB 1: GUEST SCAN LEADS */}
+        {/* TAB 1: GUEST LEADS */}
         {activeTab === 'leads' && (
-          <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #E2E2DE', padding: '1.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+          <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #E2E2DE', padding: '1.5rem' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 400, color: '#1B2B22', marginBottom: '1.5rem' }}>Guest Booking Management</h2>
             
             <div style={{ overflowX: 'auto' }}>
@@ -174,7 +180,11 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredLeads.map((lead, idx) => {
+                  {filteredLeads.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#aaa' }}>No guest scan records found.</td>
+                    </tr>
+                  ) : filteredLeads.map((lead, idx) => {
                     const isConfirmed = lead.status === 'Confirmed';
                     return (
                       <tr key={idx} style={{ borderBottom: '1px solid #F0F0EC' }}>
@@ -218,20 +228,19 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* TAB 2: REGISTERED PARTNERS WITH UPI */}
+        {/* TAB 2: PARTNERS */}
         {activeTab === 'partners' && (
-          <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #E2E2DE', padding: '1.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 400, color: '#1B2B22', marginBottom: '1.5rem' }}>Partner Network Directory</h2>
+          <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #E2E2DE', padding: '1.5rem' }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 400, color: '#1B2B22', marginBottom: '1.5rem' }}>Partner Directory</h2>
             
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #E2E2DE', color: '#888' }}>
                     <th style={{ padding: '12px' }}>NAME / USERNAME</th>
-                    <th style={{ padding: '12px' }}>TYPE</th>
                     <th style={{ padding: '12px' }}>OWNER</th>
                     <th style={{ padding: '12px' }}>REF CODE</th>
-                    <th style={{ padding: '12px' }}>PAYOUT UPI ID</th>
+                    <th style={{ padding: '12px' }}>UPI ID</th>
                     <th style={{ padding: '12px', textAlign: 'right' }}>ACTIONS</th>
                   </tr>
                 </thead>
@@ -239,7 +248,6 @@ export default function AdminDashboard() {
                   {filteredPartners.map((partner, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #F0F0EC' }}>
                       <td style={{ padding: '12px', fontWeight: 600 }}>{partner.business_name}</td>
-                      <td style={{ padding: '12px' }}><span style={{ textTransform: 'capitalize', fontSize: '0.75rem', background: '#F0EFEA', padding: '2px 6px', borderRadius: '4px' }}>{partner.account_type || 'business'}</span></td>
                       <td style={{ padding: '12px', color: '#555' }}>{partner.owner_name}</td>
                       <td style={{ padding: '12px' }}><span style={{ background: '#F0EFEA', padding: '4px 8px', borderRadius: '4px', fontFamily: 'monospace', fontWeight: 700 }}>{partner.ref_code}</span></td>
                       <td style={{ padding: '12px', color: '#2B6A4B', fontFamily: 'monospace', fontWeight: 600 }}>{partner.upi_id || 'N/A'}</td>
@@ -254,7 +262,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* MODAL TO MANUALLY ENTER PAYMENT TAKEN & COMMISSION EARNED */}
+        {/* MODAL */}
         <AnimatePresence>
           {confirmingLead && (
             <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}>
@@ -266,7 +274,7 @@ export default function AdminDashboard() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px' }}>Total Booking Amount Taken from Guest (₹)</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px' }}>Total Booking Amount Taken (₹)</label>
                     <input type="number" placeholder="e.g. 5000" value={inputPayment} onChange={e => setInputPayment(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #E2E2DE', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }} />
                   </div>
 
@@ -277,18 +285,18 @@ export default function AdminDashboard() {
                 </div>
 
                 <button onClick={handleConfirmBooking} style={{ width: '100%', padding: '12px', background: '#2B6A4B', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
-                  Save & Notify Partner Dashboard
+                  Save & Confirm Booking
                 </button>
               </motion.div>
             </div>
           )}
         </AnimatePresence>
 
-        {/* MODAL TO VIEW / PRINT / DOWNLOAD QR CODE */}
+        {/* QR MODAL */}
         <AnimatePresence>
           {selectedPartnerQR && (
             <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}>
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} style={{ background: '#fff', borderRadius: '16px', padding: '2rem', maxWidth: '380px', width: '100%', textAlign: 'center', position: 'relative' }}>
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1 }} style={{ background: '#fff', borderRadius: '16px', padding: '2rem', maxWidth: '380px', width: '100%', textAlign: 'center', position: 'relative' }}>
                 <button onClick={() => setSelectedPartnerQR(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', color: '#888' }}><X size={20} /></button>
                 
                 <h3 style={{ fontSize: '1.2rem', margin: '0 0 4px 0' }}>{selectedPartnerQR.business_name}</h3>
