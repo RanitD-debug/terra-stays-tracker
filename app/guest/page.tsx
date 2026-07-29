@@ -1,7 +1,6 @@
 "use client";
 import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Send, Sparkles, User, Phone, Users, Moon } from 'lucide-react';
 
@@ -16,7 +15,6 @@ function GuestFormContent() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Terra Stays Admin WhatsApp Number (918777659549)
   const ADMIN_WHATSAPP = "918777659549";
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,21 +24,20 @@ function GuestFormContent() {
     setSubmitting(true);
 
     try {
-      // Record lead in Supabase as 'Enquired'
-      await supabase.from('leads').insert([
-        {
-          guest_name: guestName,
-          phone: guestPhone,
-          guest_count: parseInt(guestCount) || 1,
-          nights: parseInt(nights) || 1,
-          ref_code: refCode,
-          status: 'Enquired',
-          total_amount: 0,
-          commission_amount: 0
-        }
-      ]);
-    } catch (error) {
-      console.error("Error saving lead:", error);
+      // Send data to our server API route (bypasses RLS)
+      await fetch('/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          guest_name: guestName.trim(),
+          phone: guestPhone.trim(),
+          guest_count: guestCount,
+          nights: nights,
+          ref_code: refCode.trim().toUpperCase()
+        })
+      });
+    } catch (err) {
+      console.error("API call error:", err);
     }
 
     setSubmitting(false);
@@ -50,7 +47,11 @@ function GuestFormContent() {
     const message = `Hello Terra Stays! 🌿\n\nI scanned the QR code at partner (${refCode}) and would like to reserve a stay:\n\n• Guest Name: ${guestName}\n• Phone: ${guestPhone}\n• Guests: ${guestCount}\n• Duration: ${nights} night(s)`;
 
     const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`;
-    window.location.href = whatsappUrl;
+
+    // Short delay to let request complete
+    setTimeout(() => {
+      window.location.href = whatsappUrl;
+    }, 300);
   };
 
   return (
@@ -70,7 +71,7 @@ function GuestFormContent() {
         {submitted ? (
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
             <CheckCircle2 size={48} color="#2B6A4B" style={{ margin: '0 auto 1rem auto' }} />
-            <h3 style={{ fontSize: '1.2rem', color: '#1B2B22', marginBottom: '8px' }}>Redirecting to WhatsApp...</h3>
+            <h3 style={{ fontSize: '1.2rem', color: '#1B2B22', marginBottom: '8px' }}>Enquiry Logged! Opening WhatsApp...</h3>
             <p style={{ color: '#666', fontSize: '0.85rem' }}>If WhatsApp didn't open automatically, tap below:</p>
             <button 
               onClick={() => {
@@ -147,7 +148,7 @@ function GuestFormContent() {
               disabled={submitting}
               style={{ width: '100%', padding: '14px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              {submitting ? "Saving Check-in..." : "Confirm & Open WhatsApp"} <Send size={16} />
+              {submitting ? "Logging Enquiry..." : "Confirm & Open WhatsApp"} <Send size={16} />
             </button>
           </form>
         )}
