@@ -2,9 +2,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from './supabaseClient';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
-import { Building2, UserCheck, ShieldCheck, QrCode, ArrowRight, Download, LogIn, AlertCircle } from 'lucide-react';
+import { Building2, UserCheck, ShieldCheck, QrCode, ArrowRight, LogIn, AlertCircle } from 'lucide-react';
 
 export default function Home() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function Home() {
     setError(null);
     setLoading(true);
 
-    const nameToRegister = accountType === 'business' ? businessName.trim() : businessName.trim();
+    const nameToRegister = businessName.trim();
 
     // Check for duplicate username in Individual mode
     if (accountType === 'individual') {
@@ -73,7 +73,7 @@ export default function Home() {
   return (
     <div style={{ minHeight: '100vh', background: '#F7F6F2', color: '#1B2B22', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
       
-      {/* TOP HEADER / LOGIN SHORTCUT */}
+      {/* TOP HEADER */}
       <div style={{ width: '100%', maxWidth: '460px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.2rem', fontWeight: 300, margin: 0, letterSpacing: '0.05em' }}>TERRA STAYS</h2>
         <button 
@@ -217,7 +217,7 @@ export default function Home() {
           </form>
         )}
 
-        {/* STEP 4: GENERATED QR CODE & REDIRECT TO LOGIN */}
+        {/* STEP 4: GENERATED QR CODE */}
         {step === 'qr' && (
           <div style={{ textAlign: 'center' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#EAF4EE', color: '#2B6A4B', padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, marginBottom: '1rem' }}>

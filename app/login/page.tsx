@@ -29,7 +29,7 @@ function LoginFormContent() {
     const cleanCode = refCode.trim().toUpperCase();
     const cleanIdent = identifier.trim().toLowerCase();
 
-    // Query partner by ref_code or business/user name
+    // Query partner by ref_code
     const { data: partner, error: fetchErr } = await supabase
       .from('affiliates')
       .select('*')
@@ -43,7 +43,6 @@ function LoginFormContent() {
       return;
     }
 
-    // Verify name if provided
     if (cleanIdent && partner.business_name.toLowerCase() !== cleanIdent) {
       setError('Business name / username does not match this referral code.');
       return;

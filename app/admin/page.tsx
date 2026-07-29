@@ -3,10 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
-import { 
-  BarChart, Users, Building, RefreshCw, CheckCircle2, 
-  QrCode, Printer, X, ExternalLink, Search, MessageSquare, Phone, IndianRupee, PauseCircle, Clock
-} from 'lucide-react';
+import { RefreshCw, CheckCircle2, X, PauseCircle } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [leads, setLeads] = useState<any[]>([]);
@@ -16,7 +13,7 @@ export default function AdminDashboard() {
   const [selectedPartnerQR, setSelectedPartnerQR] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Confirmation modal state for manually typing payments
+  // Confirmation modal state for manual payment input
   const [confirmingLead, setConfirmingLead] = useState<any | null>(null);
   const [inputPayment, setInputPayment] = useState('');
   const [inputCommission, setInputCommission] = useState('');
@@ -35,7 +32,6 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
-  // Update booking status & manual INR payment/commission
   const handleConfirmBooking = async () => {
     if (!confirmingLead) return;
 
@@ -145,7 +141,7 @@ export default function AdminDashboard() {
           />
         </div>
 
-        {/* TAB 1: GUEST SCAN LEADS WITH MANUAL APPROVAL */}
+        {/* TAB 1: GUEST SCAN LEADS */}
         {activeTab === 'leads' && (
           <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #E2E2DE', padding: '1.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 400, color: '#1B2B22', marginBottom: '1.5rem' }}>Guest Booking Management</h2>
@@ -179,7 +175,7 @@ export default function AdminDashboard() {
                           ) : lead.status === 'Paused' ? (
                             <span style={{ color: '#991B1B', background: '#FDF2F2', padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>Paused</span>
                           ) : (
-                            <span style={{ color: '#B45309', background: '#FFFBEB', padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight 600 }}>Enquired</span>
+                            <span style={{ color: '#B45309', background: '#FFFBEB', padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>Enquired</span>
                           )}
                         </td>
                         <td style={{ padding: '12px', fontWeight: 600 }}>₹{Number(lead.total_amount || 0).toLocaleString('en-IN')}</td>
@@ -269,6 +265,28 @@ export default function AdminDashboard() {
 
                 <button onClick={handleConfirmBooking} style={{ width: '100%', padding: '12px', background: '#2B6A4B', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
                   Save & Notify Partner Dashboard
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL TO VIEW / PRINT QR CODE */}
+        <AnimatePresence>
+          {selectedPartnerQR && (
+            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}>
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} style={{ background: '#fff', borderRadius: '16px', padding: '2rem', maxWidth: '380px', width: '100%', textAlign: 'center', position: 'relative' }}>
+                <button onClick={() => setSelectedPartnerQR(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', color: '#888' }}><X size={20} /></button>
+                
+                <h3 style={{ fontSize: '1.2rem', margin: '0 0 4px 0' }}>{selectedPartnerQR.business_name}</h3>
+                <p style={{ color: '#888', fontSize: '0.8rem', margin: '0 0 1rem 0' }}>Ref: <strong>{selectedPartnerQR.ref_code}</strong></p>
+
+                <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #E2E2DE', display: 'inline-block', marginBottom: '1.25rem' }}>
+                  <QRCodeCanvas value={selectedPartnerQR.guestUrl} size={180} level={"H"} includeMargin={true} />
+                </div>
+
+                <button onClick={() => window.print()} style={{ width: '100%', padding: '10px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
+                  Print Asset Standee
                 </button>
               </motion.div>
             </div>

@@ -4,10 +4,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
-import { 
-  Building2, Users, IndianRupee, LogOut, Printer, RefreshCw, 
-  CheckCircle2, Clock, ShieldCheck, X
-} from 'lucide-react';
+import { Users, IndianRupee, LogOut, Printer, RefreshCw, CheckCircle2, Clock } from 'lucide-react';
 
 export default function PartnerDashboard() {
   const router = useRouter();
@@ -34,7 +31,7 @@ export default function PartnerDashboard() {
       .select('*')
       .eq('ref_code', refCode);
 
-    if (data) setLeads(data.reverse());
+    if (data) setLeads([...data].reverse());
     setLoading(false);
   };
 
@@ -48,7 +45,6 @@ export default function PartnerDashboard() {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const guestUrl = `${origin}/guest?ref=${partner.ref_code}`;
 
-  // Metrics
   const totalEnquiries = leads.length;
   const confirmedLeads = leads.filter(l => l.status === 'Confirmed');
   const totalEarningsINR = confirmedLeads.reduce((acc, curr) => acc + (Number(curr.commission_amount) || 0), 0);
@@ -103,7 +99,7 @@ export default function PartnerDashboard() {
                 onClick={() => window.print()}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
               >
-                <Printer size={16} /> Print Reception Standee
+                <Printer size={16} /> Print Standee Asset
               </button>
             </div>
 
@@ -144,7 +140,7 @@ export default function PartnerDashboard() {
 
               <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #E2E2DE', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#888', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight 700, textTransform: 'uppercase' }}>Confirmed Payout</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Confirmed Payout</span>
                   <IndianRupee size={16} color="#2B6A4B" />
                 </div>
                 <p style={{ fontSize: '2rem', fontWeight: 600, color: '#2B6A4B', margin: 0 }}>₹{totalEarningsINR.toLocaleString('en-IN')}</p>
