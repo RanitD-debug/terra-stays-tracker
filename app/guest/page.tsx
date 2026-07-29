@@ -3,7 +3,7 @@ import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Send, Sparkles, User, Phone, Users, Moon, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient'; // Adjust path if your supabaseClient.js is located elsewhere
+import { supabase } from '../supabaseClient';
 
 function GuestFormContent() {
   const searchParams = useSearchParams();
