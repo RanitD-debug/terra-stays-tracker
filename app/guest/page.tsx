@@ -3,7 +3,7 @@ import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Send, Sparkles, User, Phone, Users, Moon, Loader2 } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../supabaseClient'; 
 
 function GuestFormContent() {
   const searchParams = useSearchParams();
@@ -28,9 +28,9 @@ function GuestFormContent() {
     const cleanPhone = guestPhone.trim();
     const cleanName = guestName.trim();
 
-    // 1. Directly insert into Supabase database
     try {
-      const { error } = await supabase
+      // 1. Directly insert into Supabase database
+      const { data, error } = await supabase
         .from('guest_scans')
         .insert([
           {
@@ -43,12 +43,21 @@ function GuestFormContent() {
           }
         ]);
 
+      // IF SUPABASE THROWS AN ERROR, SHOW IT AND STOP!
       if (error) {
-        console.error('Supabase Insert Error:', error.message);
+        alert(`🚨 SUPABASE ERROR 🚨\n\nMessage: ${error.message}\nDetails: ${error.details || 'None'}\nHint: ${error.hint || 'None'}\nCode: ${error.code}`);
+        setSubmitting(false); // Stop loading
+        return; // STOP the function here so it doesn't open WhatsApp
       }
-    } catch (err) {
-      console.error('Failed to send to Supabase:', err);
+
+    } catch (err: any) {
+      // IF THE NETWORK FAILS, SHOW IT AND STOP!
+      alert(`🚨 NETWORK/CODE ERROR 🚨\n\nMessage: ${err.message || 'Unknown error'}`);
+      setSubmitting(false);
+      return;
     }
+
+    // --- If it gets down here, the Supabase insert was 100% SUCCESSFUL ---
 
     // 2. Local fallback
     try {
