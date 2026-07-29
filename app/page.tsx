@@ -36,7 +36,7 @@ export default function Home() {
     const prefix = accountType === 'business' ? 'BOUT' : 'INDV';
     const generatedCode = `${prefix}${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const newPartner = {
+    const fullPartnerData = {
       business_name: nameToRegister,
       owner_name: ownerName.trim(),
       whatsapp: whatsapp.trim(),
@@ -47,18 +47,31 @@ export default function Home() {
     };
 
     try {
-      // Direct insert into fresh Supabase table
-      const { error: insertErr } = await supabase.from('affiliates').insert([newPartner]);
+      // 1. Try full payload insert
+      let { error: insertErr } = await supabase.from('affiliates').insert([fullPartnerData]);
+
+      // 2. If schema cache error occurs, try fallback insert with base columns
+      if (insertErr && insertErr.message.includes("schema cache")) {
+        console.warn("Schema cache mismatch, attempting base column fallback insert...");
+        const basePartnerData = {
+          business_name: `${nameToRegister} (${accountType.toUpperCase()})`,
+          owner_name: ownerName.trim(),
+          whatsapp: whatsapp.trim(),
+          ref_code: generatedCode.toUpperCase()
+        };
+        const fallbackResult = await supabase.from('affiliates').insert([basePartnerData]);
+        insertErr = fallbackResult.error;
+      }
 
       if (insertErr) {
-        console.error("Registration insert error:", insertErr.message);
+        console.error("Registration error:", insertErr.message);
         setError(`Registration error: ${insertErr.message}`);
         setLoading(false);
         return;
       }
     } catch (supaErr: any) {
       console.error("Supabase exception:", supaErr);
-      setError('Failed to connect to database. Please try again.');
+      setError('Connection error. Please try again.');
       setLoading(false);
       return;
     }
