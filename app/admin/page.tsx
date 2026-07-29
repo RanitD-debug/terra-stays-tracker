@@ -23,13 +23,13 @@ export default function AdminDashboard() {
     setDbError(null);
 
     try {
-      // Fetch without forcing strict database order clauses that crash on missing columns
-      const { data: lData, error: lErr } = await supabase.from('leads').select('*');
+      // FIXED: Changed 'leads' to 'guest_scans' to match your database exactly
+      const { data: lData, error: lErr } = await supabase.from('guest_scans').select('*');
       const { data: aData, error: aErr } = await supabase.from('affiliates').select('*');
 
       if (lErr) {
-        console.error("Leads query error:", lErr);
-        setDbError(`Leads fetch failed: ${lErr.message}`);
+        console.error("Scans query error:", lErr);
+        setDbError(`Scans fetch failed: ${lErr.message}`);
       } else if (lData) {
         setLeads([...lData].reverse());
       }
@@ -58,12 +58,13 @@ export default function AdminDashboard() {
     const totalAmt = parseFloat(inputPayment) || 0;
     const commAmt = parseFloat(inputCommission) || 0;
 
+    // FIXED: Changed table to 'guest_scans' and updated column names
     const { error } = await supabase
-      .from('leads')
+      .from('guest_scans')
       .update({
         status: 'Confirmed',
-        total_amount: totalAmt,
-        commission_amount: commAmt
+        payment_taken: totalAmt,
+        commission: commAmt
       })
       .eq('id', confirmingLead.id);
 
@@ -79,7 +80,8 @@ export default function AdminDashboard() {
   };
 
   const handlePauseBooking = async (leadId: string) => {
-    await supabase.from('leads').update({ status: 'Paused' }).eq('id', leadId);
+    // FIXED: Changed table to 'guest_scans'
+    await supabase.from('guest_scans').update({ status: 'Paused' }).eq('id', leadId);
     fetchDatabaseData();
   };
 
@@ -103,11 +105,11 @@ export default function AdminDashboard() {
 
   const totalLeads = leads.length;
   const totalPartners = affiliates.length;
-  const totalCommissionDisbursed = leads.reduce((acc, curr) => acc + (Number(curr.commission_amount) || 0), 0);
+  // FIXED: Changed 'commission_amount' to 'commission'
+  const totalCommissionDisbursed = leads.reduce((acc, curr) => acc + (Number(curr.commission) || 0), 0);
 
   const filteredLeads = leads.filter(lead => 
-    lead.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.phone?.includes(searchTerm) ||
+    lead.guest_phone?.includes(searchTerm) ||
     lead.ref_code?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -210,8 +212,8 @@ export default function AdminDashboard() {
                     const isConfirmed = lead.status === 'Confirmed';
                     return (
                       <tr key={idx} style={{ borderBottom: '1px solid #F0F0EC' }}>
-                        <td style={{ padding: '12px', fontWeight: 600 }}>{lead.guest_name}</td>
-                        <td style={{ padding: '12px', color: '#555' }}>{lead.phone}</td>
+                        <td style={{ padding: '12px', fontWeight: 600 }}>{lead.guest_name || 'Guest'}</td>
+                        <td style={{ padding: '12px', color: '#555' }}>{lead.guest_phone}</td>
                         <td style={{ padding: '12px', fontWeight: 500, color: '#1B2B22' }}>{getBusinessName(lead.ref_code)}</td>
                         <td style={{ padding: '12px' }}><span style={{ background: '#F0EFEA', padding: '4px 8px', borderRadius: '4px', fontFamily: 'monospace', fontWeight: 700 }}>{lead.ref_code}</span></td>
                         <td style={{ padding: '12px' }}>
@@ -223,12 +225,12 @@ export default function AdminDashboard() {
                             <span style={{ color: '#B45309', background: '#FFFBEB', padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>Enquired</span>
                           )}
                         </td>
-                        <td style={{ padding: '12px', fontWeight: 600 }}>₹{Number(lead.total_amount || 0).toLocaleString('en-IN')}</td>
-                        <td style={{ padding: '12px', fontWeight: 700, color: '#2B6A4B' }}>₹{Number(lead.commission_amount || 0).toLocaleString('en-IN')}</td>
+                        <td style={{ padding: '12px', fontWeight: 600 }}>₹{Number(lead.payment_taken || 0).toLocaleString('en-IN')}</td>
+                        <td style={{ padding: '12px', fontWeight: 700, color: '#2B6A4B' }}>₹{Number(lead.commission || 0).toLocaleString('en-IN')}</td>
                         <td style={{ padding: '12px', textAlign: 'right' }}>
                           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
                             <button 
-                              onClick={() => { setConfirmingLead(lead); setInputPayment(lead.total_amount || ''); setInputCommission(lead.commission_amount || ''); }}
+                              onClick={() => { setConfirmingLead(lead); setInputPayment(lead.payment_taken || ''); setInputCommission(lead.commission || ''); }}
                               style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 10px', background: '#2B6A4B', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
                             >
                               <CheckCircle2 size={12} /> Confirm & Set Payout
@@ -296,7 +298,7 @@ export default function AdminDashboard() {
                 <button onClick={() => setConfirmingLead(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', color: '#888' }}><X size={20} /></button>
 
                 <h3 style={{ fontSize: '1.2rem', margin: '0 0 4px 0' }}>Confirm Booking & Set Payout</h3>
-                <p style={{ color: '#888', fontSize: '0.8rem', margin: '0 0 1.25rem 0' }}>Guest: <strong>{confirmingLead.guest_name}</strong> | Partner Ref: <strong>{confirmingLead.ref_code}</strong></p>
+                <p style={{ color: '#888', fontSize: '0.8rem', margin: '0 0 1.25rem 0' }}>Guest: <strong>{confirmingLead.guest_name || 'Guest'}</strong> | Partner Ref: <strong>{confirmingLead.ref_code}</strong></p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                   <div>
