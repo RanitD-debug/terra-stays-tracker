@@ -13,7 +13,7 @@ export default function AdminDashboard() {
   const [selectedPartnerQR, setSelectedPartnerQR] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Manual Payment Confirmation Modal
+  // Confirmation modal state for manual payment input
   const [confirmingLead, setConfirmingLead] = useState<any | null>(null);
   const [inputPayment, setInputPayment] = useState('');
   const [inputCommission, setInputCommission] = useState('');
@@ -165,7 +165,7 @@ export default function AdminDashboard() {
                   <tr style={{ borderBottom: '1px solid #E2E2DE', color: '#888' }}>
                     <th style={{ padding: '12px' }}>GUEST</th>
                     <th style={{ padding: '12px' }}>PHONE</th>
-                    <th style={{ padding: '12px' }}>PARTNER</th>
+                    <th style={{ padding: '12px' }}>PARTNER SOURCE</th>
                     <th style={{ padding: '12px' }}>REF CODE</th>
                     <th style={{ padding: '12px' }}>STATUS</th>
                     <th style={{ padding: '12px' }}>PAYMENT TAKEN (₹)</th>
@@ -180,7 +180,7 @@ export default function AdminDashboard() {
                       <tr key={idx} style={{ borderBottom: '1px solid #F0F0EC' }}>
                         <td style={{ padding: '12px', fontWeight: 600 }}>{lead.guest_name}</td>
                         <td style={{ padding: '12px', color: '#555' }}>{lead.phone}</td>
-                        <td style={{ padding: '12px', fontWeight: 500 }}>{getBusinessName(lead.ref_code)}</td>
+                        <td style={{ padding: '12px', fontWeight: 500, color: '#1B2B22' }}>{getBusinessName(lead.ref_code)}</td>
                         <td style={{ padding: '12px' }}><span style={{ background: '#F0EFEA', padding: '4px 8px', borderRadius: '4px', fontFamily: 'monospace', fontWeight: 700 }}>{lead.ref_code}</span></td>
                         <td style={{ padding: '12px' }}>
                           {isConfirmed ? (

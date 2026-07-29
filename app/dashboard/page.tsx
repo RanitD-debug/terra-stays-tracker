@@ -97,8 +97,6 @@ export default function PartnerDashboard() {
           
           {/* LEFT SIDE: QR CODE & PROFILE */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            
-            {/* QR CARD */}
             <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #E2E2DE', padding: '2rem', textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
               <span style={{ background: '#F0EFEA', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'monospace' }}>
                 REF: {partner.ref_code}
@@ -124,7 +122,6 @@ export default function PartnerDashboard() {
               </div>
             </div>
 
-            {/* ACCOUNT DETAILS CARD */}
             <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #E2E2DE', padding: '1.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 1rem 0' }}>Account & Payout Info</h3>
               
@@ -143,13 +140,10 @@ export default function PartnerDashboard() {
                 </div>
               </div>
             </div>
-
           </div>
 
           {/* RIGHT SIDE: CHARTS & GUEST ENQUIRIES TABLE */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            
-            {/* STATS CARDS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
               <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #E2E2DE', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#888', marginBottom: '8px' }}>
@@ -168,7 +162,6 @@ export default function PartnerDashboard() {
               </div>
             </div>
 
-            {/* GUEST LOG TABLE */}
             <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #E2E2DE', padding: '1.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 1.25rem 0' }}>Referred Guests & Booking Status</h3>
 
@@ -218,7 +211,6 @@ export default function PartnerDashboard() {
                 </div>
               )}
             </div>
-
           </div>
 
         </div>

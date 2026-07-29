@@ -16,7 +16,7 @@ function GuestFormContent() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Terra Stays Admin WhatsApp (India Code 91)
+  // Terra Stays Admin WhatsApp Number (918777659549)
   const ADMIN_WHATSAPP = "918777659549";
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,7 +26,7 @@ function GuestFormContent() {
     setSubmitting(true);
 
     try {
-      // 1. Record lead into Supabase
+      // Record lead in Supabase as 'Enquired'
       await supabase.from('leads').insert([
         {
           guest_name: guestName,
@@ -46,13 +46,10 @@ function GuestFormContent() {
     setSubmitting(false);
     setSubmitted(true);
 
-    // 2. Format WhatsApp URL
-    const message = `Hello Terra Stays! 🌿\n\nI scanned the QR code at partner (${refCode}) and would like to reserve a stay:\n\n• Guest Name: ${guestName}\n• Phone: ${guestPhone}\n• Guests: ${guestCount}\n• Stay Duration: ${nights} night(s)`;
+    // Build WhatsApp redirect link
+    const message = `Hello Terra Stays! 🌿\n\nI scanned the QR code at partner (${refCode}) and would like to reserve a stay:\n\n• Guest Name: ${guestName}\n• Phone: ${guestPhone}\n• Guests: ${guestCount}\n• Duration: ${nights} night(s)`;
 
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodedMessage}`;
-
-    // 3. Trigger immediate app launch on mobile
+    const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`;
     window.location.href = whatsappUrl;
   };
 
@@ -60,7 +57,6 @@ function GuestFormContent() {
     <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', fontFamily: 'sans-serif' }}>
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} style={{ background: '#fff', borderRadius: '20px', padding: '2.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 12px 30px rgba(0,0,0,0.05)', border: '1px solid #E2E2DE' }}>
         
-        {/* HEADER */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#EAF4EE', color: '#2B6A4B', padding: '6px 14px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, marginBottom: '1rem' }}>
             <Sparkles size={14} /> Partner Guest Check-in
@@ -78,7 +74,7 @@ function GuestFormContent() {
             <p style={{ color: '#666', fontSize: '0.85rem' }}>If WhatsApp didn't open automatically, tap below:</p>
             <button 
               onClick={() => {
-                const message = `Hello Terra Stays! 🌿\n\nI scanned the QR code at partner (${refCode}) and would like to reserve a stay:\n\n• Guest Name: ${guestName}\n• Phone: ${guestPhone}\n• Guests: ${guestCount}\n• Stay Duration: ${nights} night(s)`;
+                const message = `Hello Terra Stays! 🌿\n\nI scanned the QR code at partner (${refCode}) and would like to reserve a stay:\n\n• Guest Name: ${guestName}\n• Phone: ${guestPhone}\n• Guests: ${guestCount}\n• Duration: ${nights} night(s)`;
                 window.location.href = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`;
               }}
               style={{ marginTop: '1rem', width: '100%', padding: '12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
@@ -88,7 +84,6 @@ function GuestFormContent() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            
             <div>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#1B2B22', marginBottom: '6px' }}>
                 <User size={14} /> Your Full Name
@@ -154,7 +149,6 @@ function GuestFormContent() {
             >
               {submitting ? "Saving Check-in..." : "Confirm & Open WhatsApp"} <Send size={16} />
             </button>
-
           </form>
         )}
 
@@ -165,7 +159,7 @@ function GuestFormContent() {
 
 export default function GuestPage() {
   return (
-    <Suspense fallback={<div style={{ textAlign: 'center', padding: '4rem', color: '#888' }}>Loading check-in page...</div>}>
+    <Suspense fallback={<div style={{ textAlign: 'center', padding: '4rem', color: '#888' }}>Loading check-in...</div>}>
       <GuestFormContent />
     </Suspense>
   );
