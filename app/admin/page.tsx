@@ -22,28 +22,23 @@ export default function AdminDashboard() {
     setLoading(true);
     setDbError(null);
 
-    // Clear old browser local cache
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('ts_leads');
-      localStorage.removeItem('ts_affiliates');
-    }
-
     try {
-      const { data: lData, error: lErr } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
-      const { data: aData, error: aErr } = await supabase.from('affiliates').select('*').order('created_at', { ascending: false });
+      // Fetch without forcing strict database order clauses that crash on missing columns
+      const { data: lData, error: lErr } = await supabase.from('leads').select('*');
+      const { data: aData, error: aErr } = await supabase.from('affiliates').select('*');
 
       if (lErr) {
         console.error("Leads query error:", lErr);
         setDbError(`Leads fetch failed: ${lErr.message}`);
       } else if (lData) {
-        setLeads(lData);
+        setLeads([...lData].reverse());
       }
 
       if (aErr) {
         console.error("Affiliates query error:", aErr);
         setDbError(`Affiliates fetch failed: ${aErr.message}`);
       } else if (aData) {
-        setAffiliates(aData);
+        setAffiliates([...aData].reverse());
       }
     } catch (err: any) {
       console.error("Database connection exception:", err);
