@@ -1,6 +1,7 @@
 "use client";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from './supabaseClient';
 import { motion } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Building2, UserCheck, ShieldCheck, QrCode, ArrowRight, LogIn, AlertCircle, Lock, Download, Loader2 } from 'lucide-react';
@@ -36,36 +37,34 @@ export default function Home() {
     const generatedCode = `${prefix}${Math.floor(1000 + Math.random() * 9000)}`;
 
     const newPartner = {
-      id: Date.now().toString(),
       business_name: nameToRegister,
       owner_name: ownerName.trim(),
       whatsapp: whatsapp.trim(),
       upi_id: upiId.trim(),
-      ref_code: generatedCode,
+      ref_code: generatedCode.toUpperCase(),
       account_type: accountType,
       password: password
     };
 
-    // Save locally
     try {
-      const existingAffiliates = JSON.parse(localStorage.getItem('ts_affiliates') || '[]');
-      existingAffiliates.unshift(newPartner);
-      localStorage.setItem('ts_affiliates', JSON.stringify(existingAffiliates));
-    } catch (e) {}
+      // Direct insert into fresh Supabase table
+      const { error: insertErr } = await supabase.from('affiliates').insert([newPartner]);
 
-    // Send to Central Server Store
-    try {
-      await fetch('/api/store', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'ADD_AFFILIATE', payload: newPartner })
-      });
-    } catch (err) {
-      console.error("Central store affiliate error:", err);
+      if (insertErr) {
+        console.error("Registration insert error:", insertErr.message);
+        setError(`Registration error: ${insertErr.message}`);
+        setLoading(false);
+        return;
+      }
+    } catch (supaErr: any) {
+      console.error("Supabase exception:", supaErr);
+      setError('Failed to connect to database. Please try again.');
+      setLoading(false);
+      return;
     }
 
     setLoading(false);
-    setRefCode(generatedCode);
+    setRefCode(generatedCode.toUpperCase());
     setStep('qr');
   };
 
