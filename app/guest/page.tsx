@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
@@ -16,7 +16,7 @@ function GuestFormContent() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // YOUR DESIGANTED TERRA STAYS WHATSAPP NUMBER (With Country Code 91)
+  // Terra Stays Admin WhatsApp (India Code 91)
   const ADMIN_WHATSAPP = "918777659549";
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,7 +26,7 @@ function GuestFormContent() {
     setSubmitting(true);
 
     try {
-      // 1. Record lead into Supabase database first
+      // 1. Record lead into Supabase
       await supabase.from('leads').insert([
         {
           guest_name: guestName,
@@ -34,8 +34,9 @@ function GuestFormContent() {
           guest_count: parseInt(guestCount) || 1,
           nights: parseInt(nights) || 1,
           ref_code: refCode,
-          commission_rate: 12,
-          status: 'Received'
+          status: 'Enquired',
+          total_amount: 0,
+          commission_amount: 0
         }
       ]);
     } catch (error) {
@@ -45,7 +46,7 @@ function GuestFormContent() {
     setSubmitting(false);
     setSubmitted(true);
 
-    // 2. Build bulletproof WhatsApp message
+    // 2. Format WhatsApp URL
     const message = `Hello Terra Stays! 🌿\n\nI scanned the QR code at partner (${refCode}) and would like to reserve a stay:\n\n• Guest Name: ${guestName}\n• Phone: ${guestPhone}\n• Guests: ${guestCount}\n• Stay Duration: ${nights} night(s)`;
 
     const encodedMessage = encodeURIComponent(message);
@@ -66,7 +67,7 @@ function GuestFormContent() {
           </div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 300, color: '#1B2B22', margin: '0 0 6px 0' }}>Welcome to Terra Stays</h1>
           <p style={{ color: '#888', fontSize: '0.85rem', margin: 0 }}>
-            Referred by boutique partner: <strong style={{ color: '#1B2B22', fontFamily: 'monospace' }}>{refCode}</strong>
+            Referred by partner: <strong style={{ color: '#1B2B22', fontFamily: 'monospace' }}>{refCode}</strong>
           </p>
         </div>
 
@@ -74,7 +75,7 @@ function GuestFormContent() {
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
             <CheckCircle2 size={48} color="#2B6A4B" style={{ margin: '0 auto 1rem auto' }} />
             <h3 style={{ fontSize: '1.2rem', color: '#1B2B22', marginBottom: '8px' }}>Redirecting to WhatsApp...</h3>
-            <p style={{ color: '#666', fontSize: '0.85rem' }}>If WhatsApp didn't open automatically, tap the button below:</p>
+            <p style={{ color: '#666', fontSize: '0.85rem' }}>If WhatsApp didn't open automatically, tap below:</p>
             <button 
               onClick={() => {
                 const message = `Hello Terra Stays! 🌿\n\nI scanned the QR code at partner (${refCode}) and would like to reserve a stay:\n\n• Guest Name: ${guestName}\n• Phone: ${guestPhone}\n• Guests: ${guestCount}\n• Stay Duration: ${nights} night(s)`;
@@ -88,7 +89,6 @@ function GuestFormContent() {
         ) : (
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             
-            {/* GUEST NAME */}
             <div>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#1B2B22', marginBottom: '6px' }}>
                 <User size={14} /> Your Full Name
@@ -103,7 +103,6 @@ function GuestFormContent() {
               />
             </div>
 
-            {/* PHONE NUMBER */}
             <div>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#1B2B22', marginBottom: '6px' }}>
                 <Phone size={14} /> WhatsApp Phone Number
@@ -118,7 +117,6 @@ function GuestFormContent() {
               />
             </div>
 
-            {/* GUEST COUNT & NIGHTS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#1B2B22', marginBottom: '6px' }}>
@@ -149,7 +147,6 @@ function GuestFormContent() {
               </div>
             </div>
 
-            {/* SUBMIT BUTTON */}
             <button 
               type="submit" 
               disabled={submitting}

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
-import { RefreshCw, CheckCircle2, X, PauseCircle } from 'lucide-react';
+import { RefreshCw, CheckCircle2, X, PauseCircle, Download, Printer } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [leads, setLeads] = useState<any[]>([]);
@@ -13,7 +13,7 @@ export default function AdminDashboard() {
   const [selectedPartnerQR, setSelectedPartnerQR] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Confirmation modal state for manual payment input
+  // Manual Payment Confirmation Modal
   const [confirmingLead, setConfirmingLead] = useState<any | null>(null);
   const [inputPayment, setInputPayment] = useState('');
   const [inputCommission, setInputCommission] = useState('');
@@ -56,6 +56,19 @@ export default function AdminDashboard() {
   const handlePauseBooking = async (leadId: string) => {
     await supabase.from('leads').update({ status: 'Paused' }).eq('id', leadId);
     fetchData();
+  };
+
+  const downloadPartnerQR = () => {
+    const canvas = document.getElementById('admin-partner-qr-canvas') as HTMLCanvasElement;
+    if (canvas && selectedPartnerQR) {
+      const pngUrl = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pngUrl;
+      downloadLink.download = `${selectedPartnerQR.business_name.replace(/\s+/g, '_')}_TerraStays_QR.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
   };
 
   const getBusinessName = (refCode: string) => {
@@ -271,7 +284,7 @@ export default function AdminDashboard() {
           )}
         </AnimatePresence>
 
-        {/* MODAL TO VIEW / PRINT QR CODE */}
+        {/* MODAL TO VIEW / PRINT / DOWNLOAD QR CODE */}
         <AnimatePresence>
           {selectedPartnerQR && (
             <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}>
@@ -282,12 +295,17 @@ export default function AdminDashboard() {
                 <p style={{ color: '#888', fontSize: '0.8rem', margin: '0 0 1rem 0' }}>Ref: <strong>{selectedPartnerQR.ref_code}</strong></p>
 
                 <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #E2E2DE', display: 'inline-block', marginBottom: '1.25rem' }}>
-                  <QRCodeCanvas value={selectedPartnerQR.guestUrl} size={180} level={"H"} includeMargin={true} />
+                  <QRCodeCanvas id="admin-partner-qr-canvas" value={selectedPartnerQR.guestUrl} size={180} level={"H"} includeMargin={true} />
                 </div>
 
-                <button onClick={() => window.print()} style={{ width: '100%', padding: '10px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
-                  Print Asset Standee
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button onClick={downloadPartnerQR} style={{ width: '100%', padding: '10px', background: '#2B6A4B', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <Download size={16} /> Download QR Image
+                  </button>
+                  <button onClick={() => window.print()} style={{ width: '100%', padding: '10px', background: '#F0EFEA', color: '#1B2B22', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <Printer size={16} /> Print Standee
+                  </button>
+                </div>
               </motion.div>
             </div>
           )}
