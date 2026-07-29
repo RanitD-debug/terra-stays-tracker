@@ -1,17 +1,15 @@
 "use client";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from './supabaseClient';
 import { motion } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
-import { Building2, UserCheck, ShieldCheck, QrCode, ArrowRight, LogIn, AlertCircle, Lock, Download } from 'lucide-react';
+import { Building2, UserCheck, ShieldCheck, QrCode, ArrowRight, LogIn, AlertCircle, Lock, Download, Loader2 } from 'lucide-react';
 
 export default function Home() {
   const router = useRouter();
   const [step, setStep] = useState<'policy' | 'select' | 'form' | 'qr'>('policy');
   const [accountType, setAccountType] = useState<'business' | 'individual'>('business');
 
-  // Form Fields
   const [businessName, setBusinessName] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
@@ -38,6 +36,7 @@ export default function Home() {
     const generatedCode = `${prefix}${Math.floor(1000 + Math.random() * 9000)}`;
 
     const newPartner = {
+      id: Date.now().toString(),
       business_name: nameToRegister,
       owner_name: ownerName.trim(),
       whatsapp: whatsapp.trim(),
@@ -47,32 +46,22 @@ export default function Home() {
       password: password
     };
 
-    // 1. Save to Local Backup (guarantees Admin console shows the partner immediately)
+    // Save locally
     try {
       const existingAffiliates = JSON.parse(localStorage.getItem('ts_affiliates') || '[]');
       existingAffiliates.unshift(newPartner);
       localStorage.setItem('ts_affiliates', JSON.stringify(existingAffiliates));
-    } catch (localErr) {
-      console.error("Local backup save error:", localErr);
-    }
+    } catch (e) {}
 
-    // 2. Save to Supabase with fallback for schema variations
-    const payloadFull = newPartner;
-    const payloadBase = {
-      business_name: `${nameToRegister} (${accountType.toUpperCase()}) - UPI: ${upiId} - Pass: ${password}`,
-      owner_name: ownerName.trim(),
-      whatsapp: whatsapp.trim(),
-      ref_code: generatedCode
-    };
-
+    // Send to Central Server Store
     try {
-      let { error: insertError } = await supabase.from('affiliates').insert([payloadFull]);
-
-      if (insertError && insertError.message.includes("schema cache")) {
-        await supabase.from('affiliates').insert([payloadBase]);
-      }
-    } catch (supaErr) {
-      console.error("Supabase insert exception:", supaErr);
+      await fetch('/api/store', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ADD_AFFILIATE', payload: newPartner })
+      });
+    } catch (err) {
+      console.error("Central store affiliate error:", err);
     }
 
     setLoading(false);
@@ -99,7 +88,6 @@ export default function Home() {
   return (
     <div style={{ minHeight: '100vh', background: '#F7F6F2', color: '#1B2B22', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
       
-      {/* TOP HEADER / LOGIN SHORTCUT */}
       <div style={{ width: '100%', maxWidth: '460px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.2rem', fontWeight: 300, margin: 0, letterSpacing: '0.05em' }}>TERRA STAYS</h2>
         <button 
@@ -112,7 +100,6 @@ export default function Home() {
 
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} style={{ background: '#fff', borderRadius: '20px', padding: '2.5rem', maxWidth: '460px', width: '100%', boxShadow: '0 12px 35px rgba(0,0,0,0.04)', border: '1px solid #E2E2DE' }}>
         
-        {/* STEP 1: POLICY ACCEPTANCE */}
         {step === 'policy' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2B6A4B', background: '#EAF4EE', padding: '6px 12px', borderRadius: '20px', width: 'fit-content', fontSize: '0.75rem', fontWeight: 600, marginBottom: '1.25rem' }}>
@@ -135,7 +122,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* STEP 2: SELECT ACCOUNT TYPE */}
         {step === 'select' && (
           <div>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 300, margin: '0 0 8px 0' }}>Register Account</h1>
@@ -169,7 +155,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* STEP 3: REGISTRATION FORM */}
         {step === 'form' && (
           <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <h1 style={{ fontSize: '1.4rem', fontWeight: 300, margin: 0 }}>
@@ -254,15 +239,20 @@ export default function Home() {
             <button 
               type="submit" 
               disabled={loading}
-              style={{ padding: '14px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', marginTop: '6px' }}
+              style={{ padding: '14px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              {loading ? "Generating Asset..." : "Generate Entry Asset"}
+              {loading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> Registering Partner...
+                </>
+              ) : (
+                "Generate Entry Asset"
+              )}
             </button>
             <button type="button" onClick={() => setStep('select')} style={{ background: 'none', border: 'none', color: '#888', fontSize: '0.8rem', cursor: 'pointer' }}>← Back</button>
           </form>
         )}
 
-        {/* STEP 4: GENERATED QR CODE WITH DOWNLOAD */}
         {step === 'qr' && (
           <div style={{ textAlign: 'center' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#EAF4EE', color: '#2B6A4B', padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, marginBottom: '1rem' }}>

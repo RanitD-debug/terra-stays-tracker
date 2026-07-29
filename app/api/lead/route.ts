@@ -1,54 +1,54 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabaseServer = createClient(supabaseUrl, supabaseKey);
+// Central in-memory storage on Vercel server
+let globalLeads: any[] = [];
+let globalAffiliates: any[] = [];
+
+export async function GET() {
+  return NextResponse.json({
+    leads: globalLeads,
+    affiliates: globalAffiliates
+  });
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { guest_name, phone, guest_count, nights, ref_code } = body;
+    const { action, payload } = body;
 
-    const fullPayload = {
-      guest_name,
-      phone,
-      guest_count: parseInt(guest_count) || 1,
-      nights: parseInt(nights) || 1,
-      ref_code,
-      status: 'Enquired',
-      total_amount: 0,
-      commission_amount: 0
-    };
-
-    let { data, error } = await supabaseServer
-      .from('leads')
-      .insert([fullPayload])
-      .select();
-
-    if (error) {
-      const basePayload = {
-        guest_name,
-        phone,
-        guest_count: parseInt(guest_count) || 1,
-        nights: parseInt(nights) || 1,
-        ref_code
-      };
-      
-      const fallback = await supabaseServer
-        .from('leads')
-        .insert([basePayload])
-        .select();
-        
-      error = fallback.error;
-      data = fallback.data;
+    if (action === 'ADD_LEAD') {
+      // Prevent duplicates
+      const exists = globalLeads.some(l => l.id === payload.id);
+      if (!exists) {
+        globalLeads.unshift(payload);
+      }
+      return NextResponse.json({ success: true, leads: globalLeads });
     }
 
-    if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    if (action === 'ADD_AFFILIATE') {
+      const exists = globalAffiliates.some(a => a.ref_code === payload.ref_code);
+      if (!exists) {
+        globalAffiliates.unshift(payload);
+      }
+      return NextResponse.json({ success: true, affiliates: globalAffiliates });
     }
 
-    return NextResponse.json({ success: true, data });
+    if (action === 'UPDATE_LEAD_STATUS') {
+      globalLeads = globalLeads.map(lead => {
+        if (lead.id === payload.id || (lead.guest_name === payload.guest_name && lead.phone === payload.phone)) {
+          return {
+            ...lead,
+            status: payload.status,
+            total_amount: payload.total_amount ?? lead.total_amount,
+            commission_amount: payload.commission_amount ?? lead.commission_amount
+          };
+        }
+        return lead;
+      });
+      return NextResponse.json({ success: true, leads: globalLeads });
+    }
+
+    return NextResponse.json({ success: false, message: 'Invalid action' }, { status: 400 });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

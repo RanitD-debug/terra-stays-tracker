@@ -2,7 +2,7 @@
 import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Send, Sparkles, User, Phone, Users, Moon } from 'lucide-react';
+import { CheckCircle2, Send, Sparkles, User, Phone, Users, Moon, Loader2 } from 'lucide-react';
 
 function GuestFormContent() {
   const searchParams = useSearchParams();
@@ -17,9 +17,9 @@ function GuestFormContent() {
 
   const ADMIN_WHATSAPP = "918777659549";
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!guestName || !guestPhone) return;
+    if (!guestName || !guestPhone || submitting) return;
 
     setSubmitting(true);
 
@@ -27,7 +27,6 @@ function GuestFormContent() {
     const cleanPhone = guestPhone.trim();
     const cleanName = guestName.trim();
 
-    // Create lead object
     const newLead = {
       id: Date.now().toString(),
       guest_name: cleanName,
@@ -41,24 +40,30 @@ function GuestFormContent() {
       timestamp: new Date().toISOString()
     };
 
-    // Save locally without Supabase
+    // Save locally
     try {
-      const existingLeads = JSON.parse(localStorage.getItem('ts_leads') || '[]');
-      existingLeads.unshift(newLead);
-      localStorage.setItem('ts_leads', JSON.stringify(existingLeads));
-    } catch (err) {
-      console.error("Local storage error:", err);
+      const localLeads = JSON.parse(localStorage.getItem('ts_leads') || '[]');
+      localLeads.unshift(newLead);
+      localStorage.setItem('ts_leads', JSON.stringify(localLeads));
+    } catch (e) {}
+
+    // Send to Central Server Store
+    try {
+      await fetch('/api/store', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ADD_LEAD', payload: newLead })
+      });
+    } catch (serverErr) {
+      console.error("Central store send error:", serverErr);
     }
 
     setSubmitting(false);
     setSubmitted(true);
 
-    // Build WhatsApp redirect link
     const message = `Hello Terra Stays! 🌿\n\nI scanned the QR code at partner (${formattedRef}) and would like to reserve a stay:\n\n• Guest Name: ${cleanName}\n• Phone: ${cleanPhone}\n• Guests: ${guestCount}\n• Duration: ${nights} night(s)`;
-
     const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`;
 
-    // Open WhatsApp
     setTimeout(() => {
       window.location.href = whatsappUrl;
     }, 300);
@@ -81,7 +86,7 @@ function GuestFormContent() {
         {submitted ? (
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
             <CheckCircle2 size={48} color="#2B6A4B" style={{ margin: '0 auto 1rem auto' }} />
-            <h3 style={{ fontSize: '1.2rem', color: '#1B2B22', marginBottom: '8px' }}>Enquiry Recorded!</h3>
+            <h3 style={{ fontSize: '1.2rem', color: '#1B2B22', marginBottom: '8px' }}>Enquiry Logged!</h3>
             <p style={{ color: '#666', fontSize: '0.85rem' }}>Opening WhatsApp now...</p>
           </div>
         ) : (
@@ -149,7 +154,15 @@ function GuestFormContent() {
               disabled={submitting}
               style={{ width: '100%', padding: '14px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              {submitting ? "Logging Enquiry..." : "Confirm & Open WhatsApp"} <Send size={16} />
+              {submitting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> Saving Record...
+                </>
+              ) : (
+                <>
+                  Confirm & Open WhatsApp <Send size={16} />
+                </>
+              )}
             </button>
           </form>
         )}

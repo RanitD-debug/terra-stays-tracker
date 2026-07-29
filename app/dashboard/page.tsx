@@ -19,17 +19,30 @@ export default function PartnerDashboard() {
     }
     const parsed = JSON.parse(saved);
     setPartner(parsed);
-    fetchLocalLeads(parsed.ref_code);
+    fetchCentralLeads(parsed.ref_code);
   }, []);
 
-  const fetchLocalLeads = (refCode: string) => {
+  const fetchCentralLeads = async (refCode: string) => {
+    let localLeads: any[] = [];
     try {
-      const allLeads = JSON.parse(localStorage.getItem('ts_leads') || '[]');
-      const matching = allLeads.filter((l: any) => l.ref_code === refCode);
-      setLeads(matching);
-    } catch (e) {
-      console.error(e);
-    }
+      localLeads = JSON.parse(localStorage.getItem('ts_leads') || '[]');
+    } catch (e) {}
+
+    let serverLeads: any[] = [];
+    try {
+      const res = await fetch('/api/store');
+      const data = await res.json();
+      if (data.leads) serverLeads = data.leads;
+    } catch (e) {}
+
+    const map = new Map();
+    [...localLeads, ...serverLeads].forEach(l => {
+      if (l.ref_code === refCode) {
+        map.set(l.id || `${l.guest_name}_${l.phone}`, l);
+      }
+    });
+
+    setLeads(Array.from(map.values()).reverse());
   };
 
   const downloadQR = () => {
@@ -74,10 +87,10 @@ export default function PartnerDashboard() {
 
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <button 
-              onClick={() => fetchLocalLeads(partner.ref_code)} 
+              onClick={() => fetchCentralLeads(partner.ref_code)} 
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 16px', background: '#fff', border: '1px solid #E2E2DE', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
             >
-              <RefreshCw size={14} /> Refresh Data
+              <RefreshCw size={14} /> Refresh Live Leads
             </button>
             <button 
               onClick={() => setShowLogoutModal(true)}
