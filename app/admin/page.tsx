@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
 import { RefreshCw, CheckCircle2, X, PauseCircle, Download, Printer } from 'lucide-react';
@@ -15,29 +16,63 @@ export default function AdminDashboard() {
   const [inputPayment, setInputPayment] = useState('');
   const [inputCommission, setInputCommission] = useState('');
 
-  const loadLocalData = () => {
+  const fetchAllData = async () => {
+    // 1. Read Local Backup Data
+    let localLeads: any[] = [];
+    let localAffiliates: any[] = [];
     try {
-      const storedLeads = JSON.parse(localStorage.getItem('ts_leads') || '[]');
-      const storedAffiliates = JSON.parse(localStorage.getItem('ts_affiliates') || '[]');
-      setLeads(storedLeads);
-      setAffiliates(storedAffiliates);
+      localLeads = JSON.parse(localStorage.getItem('ts_leads') || '[]');
+      localAffiliates = JSON.parse(localStorage.getItem('ts_affiliates') || '[]');
     } catch (e) {
-      console.error("Local storage read error", e);
+      console.error(e);
     }
+
+    // 2. Fetch from Supabase
+    let supaLeads: any[] = [];
+    let supaAffiliates: any[] = [];
+
+    try {
+      const { data: lData } = await supabase.from('leads').select('*');
+      const { data: aData } = await supabase.from('affiliates').select('*');
+      if (lData) supaLeads = lData;
+      if (aData) supaAffiliates = aData;
+    } catch (err) {
+      console.error("Supabase fetch notice:", err);
+    }
+
+    // 3. Merge both sources (Supabase + LocalStorage) without duplicates
+    const combinedLeadsMap = new Map();
+    [...localLeads, ...supaLeads].forEach(item => {
+      const idKey = item.id || `${item.guest_name}_${item.phone}_${item.ref_code}`;
+      combinedLeadsMap.set(idKey, item);
+    });
+
+    const combinedAffiliatesMap = new Map();
+    [...localAffiliates, ...supaAffiliates].forEach(item => {
+      const codeKey = item.ref_code || item.business_name;
+      combinedAffiliatesMap.set(codeKey, item);
+    });
+
+    const mergedLeads = Array.from(combinedLeadsMap.values()).reverse();
+    const mergedAffiliates = Array.from(combinedAffiliatesMap.values()).reverse();
+
+    setLeads(mergedLeads);
+    setAffiliates(mergedAffiliates);
   };
 
   useEffect(() => {
-    loadLocalData();
+    fetchAllData();
   }, []);
 
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     if (!confirmingLead) return;
 
     const totalAmt = parseFloat(inputPayment) || 0;
     const commAmt = parseFloat(inputCommission) || 0;
 
+    // Update in memory & localStorage
     const updatedLeads = leads.map(lead => {
-      if (lead.id === confirmingLead.id) {
+      if (lead.id === confirmingLead.id || (lead.guest_name === confirmingLead.guest_name && lead.phone === confirmingLead.phone)) {
         return {
           ...lead,
           status: 'Confirmed',
@@ -51,12 +86,22 @@ export default function AdminDashboard() {
     setLeads(updatedLeads);
     localStorage.setItem('ts_leads', JSON.stringify(updatedLeads));
 
+    // Update in Supabase
+    try {
+      if (confirmingLead.id) {
+        await supabase
+          .from('leads')
+          .update({ status: 'Confirmed', total_amount: totalAmt, commission_amount: commAmt })
+          .eq('id', confirmingLead.id);
+      }
+    } catch (e) {}
+
     setConfirmingLead(null);
     setInputPayment('');
     setInputCommission('');
   };
 
-  const handlePauseBooking = (leadId: string) => {
+  const handlePauseBooking = async (leadId: string) => {
     const updatedLeads = leads.map(lead => {
       if (lead.id === leadId) {
         return { ...lead, status: 'Paused' };
@@ -66,6 +111,10 @@ export default function AdminDashboard() {
 
     setLeads(updatedLeads);
     localStorage.setItem('ts_leads', JSON.stringify(updatedLeads));
+
+    try {
+      await supabase.from('leads').update({ status: 'Paused' }).eq('id', leadId);
+    } catch (e) {}
   };
 
   const downloadPartnerQR = () => {
@@ -115,7 +164,7 @@ export default function AdminDashboard() {
             <p style={{ color: '#888', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Manual payment approval & partner manager</p>
           </div>
           <button 
-            onClick={loadLocalData} 
+            onClick={fetchAllData} 
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
           >
             <RefreshCw size={14} /> Refresh Records
@@ -245,7 +294,11 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPartners.map((partner, idx) => (
+                  {filteredPartners.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#aaa' }}>No registered partners found.</td>
+                    </tr>
+                  ) : filteredPartners.map((partner, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #F0F0EC' }}>
                       <td style={{ padding: '12px', fontWeight: 600 }}>{partner.business_name}</td>
                       <td style={{ padding: '12px', color: '#555' }}>{partner.owner_name}</td>
@@ -262,7 +315,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* MODAL */}
+        {/* MODAL TO CONFIRM BOOKING */}
         <AnimatePresence>
           {confirmingLead && (
             <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}>

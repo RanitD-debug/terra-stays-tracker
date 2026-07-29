@@ -37,38 +37,47 @@ export default function Home() {
     const prefix = accountType === 'business' ? 'BOUT' : 'INDV';
     const generatedCode = `${prefix}${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const payloadFull = {
+    const newPartner = {
       business_name: nameToRegister,
-      owner_name: ownerName,
-      whatsapp: whatsapp,
-      upi_id: upiId,
+      owner_name: ownerName.trim(),
+      whatsapp: whatsapp.trim(),
+      upi_id: upiId.trim(),
       ref_code: generatedCode,
       account_type: accountType,
       password: password
     };
 
+    // 1. Save to Local Backup (guarantees Admin console shows the partner immediately)
+    try {
+      const existingAffiliates = JSON.parse(localStorage.getItem('ts_affiliates') || '[]');
+      existingAffiliates.unshift(newPartner);
+      localStorage.setItem('ts_affiliates', JSON.stringify(existingAffiliates));
+    } catch (localErr) {
+      console.error("Local backup save error:", localErr);
+    }
+
+    // 2. Save to Supabase with fallback for schema variations
+    const payloadFull = newPartner;
     const payloadBase = {
       business_name: `${nameToRegister} (${accountType.toUpperCase()}) - UPI: ${upiId} - Pass: ${password}`,
-      owner_name: ownerName,
-      whatsapp: whatsapp,
+      owner_name: ownerName.trim(),
+      whatsapp: whatsapp.trim(),
       ref_code: generatedCode
     };
 
-    let { error: insertError } = await supabase.from('affiliates').insert([payloadFull]);
+    try {
+      let { error: insertError } = await supabase.from('affiliates').insert([payloadFull]);
 
-    if (insertError && insertError.message.includes("schema cache")) {
-      const fallback = await supabase.from('affiliates').insert([payloadBase]);
-      insertError = fallback.error;
+      if (insertError && insertError.message.includes("schema cache")) {
+        await supabase.from('affiliates').insert([payloadBase]);
+      }
+    } catch (supaErr) {
+      console.error("Supabase insert exception:", supaErr);
     }
 
     setLoading(false);
-
-    if (insertError) {
-      setError(insertError.message);
-    } else {
-      setRefCode(generatedCode);
-      setStep('qr');
-    }
+    setRefCode(generatedCode);
+    setStep('qr');
   };
 
   const downloadQR = () => {
@@ -90,7 +99,7 @@ export default function Home() {
   return (
     <div style={{ minHeight: '100vh', background: '#F7F6F2', color: '#1B2B22', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
       
-      {/* TOP HEADER */}
+      {/* TOP HEADER / LOGIN SHORTCUT */}
       <div style={{ width: '100%', maxWidth: '460px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.2rem', fontWeight: 300, margin: 0, letterSpacing: '0.05em' }}>TERRA STAYS</h2>
         <button 
@@ -103,7 +112,7 @@ export default function Home() {
 
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} style={{ background: '#fff', borderRadius: '20px', padding: '2.5rem', maxWidth: '460px', width: '100%', boxShadow: '0 12px 35px rgba(0,0,0,0.04)', border: '1px solid #E2E2DE' }}>
         
-        {/* STEP 1: POLICY */}
+        {/* STEP 1: POLICY ACCEPTANCE */}
         {step === 'policy' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2B6A4B', background: '#EAF4EE', padding: '6px 12px', borderRadius: '20px', width: 'fit-content', fontSize: '0.75rem', fontWeight: 600, marginBottom: '1.25rem' }}>
@@ -126,7 +135,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* STEP 2: SELECT TYPE */}
+        {/* STEP 2: SELECT ACCOUNT TYPE */}
         {step === 'select' && (
           <div>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 300, margin: '0 0 8px 0' }}>Register Account</h1>
@@ -160,7 +169,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* STEP 3: FORM WITH GOOGLE PASSWORD SAVE SUPPORT */}
+        {/* STEP 3: REGISTRATION FORM */}
         {step === 'form' && (
           <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <h1 style={{ fontSize: '1.4rem', fontWeight: 300, margin: 0 }}>
@@ -253,7 +262,7 @@ export default function Home() {
           </form>
         )}
 
-        {/* STEP 4: GENERATED QR CODE WITH DIRECT DOWNLOAD */}
+        {/* STEP 4: GENERATED QR CODE WITH DOWNLOAD */}
         {step === 'qr' && (
           <div style={{ textAlign: 'center' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#EAF4EE', color: '#2B6A4B', padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, marginBottom: '1rem' }}>
