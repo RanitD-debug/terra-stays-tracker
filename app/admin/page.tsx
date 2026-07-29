@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
-import { RefreshCw, CheckCircle2, X, PauseCircle, Download, Printer, Trash2 } from 'lucide-react';
+import { RefreshCw, CheckCircle2, X, PauseCircle, Download, Printer, AlertTriangle } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [leads, setLeads] = useState<any[]>([]);
@@ -12,6 +12,7 @@ export default function AdminDashboard() {
   const [selectedPartnerQR, setSelectedPartnerQR] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   const [confirmingLead, setConfirmingLead] = useState<any | null>(null);
   const [inputPayment, setInputPayment] = useState('');
@@ -19,26 +20,34 @@ export default function AdminDashboard() {
 
   const fetchDatabaseData = async () => {
     setLoading(true);
+    setDbError(null);
 
     try {
-      const { data: lData } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
-      const { data: aData } = await supabase.from('affiliates').select('*').order('created_at', { ascending: false });
+      const { data: lData, error: lErr } = await supabase.from('leads').select('*').order('id', { ascending: false });
+      const { data: aData, error: aErr } = await supabase.from('affiliates').select('*').order('id', { ascending: false });
 
-      if (lData) setLeads(lData);
-      if (aData) setAffiliates(aData);
-    } catch (err) {
-      console.error("Database fetch error:", err);
+      if (lErr) {
+        console.error("Leads query error:", lErr);
+        setDbError(`Leads fetch failed: ${lErr.message}`);
+      } else if (lData) {
+        setLeads(lData);
+      }
+
+      if (aErr) {
+        console.error("Affiliates query error:", aErr);
+        setDbError(`Affiliates fetch failed: ${aErr.message}`);
+      } else if (aData) {
+        setAffiliates(aData);
+      }
+    } catch (err: any) {
+      console.error("Database connection exception:", err);
+      setDbError(`Connection error: ${err.message}`);
     }
 
     setLoading(false);
   };
 
   useEffect(() => {
-    // Clear old test storage key on load
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('ts_leads');
-      localStorage.removeItem('ts_affiliates');
-    }
     fetchDatabaseData();
   }, []);
 
@@ -48,8 +57,7 @@ export default function AdminDashboard() {
     const totalAmt = parseFloat(inputPayment) || 0;
     const commAmt = parseFloat(inputCommission) || 0;
 
-    // Direct database update
-    await supabase
+    const { error } = await supabase
       .from('leads')
       .update({
         status: 'Confirmed',
@@ -57,6 +65,11 @@ export default function AdminDashboard() {
         commission_amount: commAmt
       })
       .eq('id', confirmingLead.id);
+
+    if (error) {
+      alert(`Update failed: ${error.message}`);
+      return;
+    }
 
     setConfirmingLead(null);
     setInputPayment('');
@@ -67,13 +80,6 @@ export default function AdminDashboard() {
   const handlePauseBooking = async (leadId: string) => {
     await supabase.from('leads').update({ status: 'Paused' }).eq('id', leadId);
     fetchDatabaseData();
-  };
-
-  const clearOldCache = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.clear();
-      fetchDatabaseData();
-    }
   };
 
   const downloadPartnerQR = () => {
@@ -122,22 +128,20 @@ export default function AdminDashboard() {
             <h1 style={{ fontSize: '1.8rem', fontWeight: 300, color: '#1B2B22', margin: 0 }}>Terra Stays Admin Console</h1>
             <p style={{ color: '#888', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Connected to Live Supabase Database</p>
           </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button 
-              onClick={clearOldCache} 
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px', background: '#F0EFEA', color: '#555', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
-            >
-              <Trash2 size={14} /> Clear Local Cache
-            </button>
-            <button 
-              onClick={fetchDatabaseData} 
-              disabled={loading}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
-            >
-              <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> {loading ? "Syncing..." : "Refresh Live Database"}
-            </button>
-          </div>
+          <button 
+            onClick={fetchDatabaseData} 
+            disabled={loading}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> {loading ? "Syncing..." : "Refresh Live Records"}
+          </button>
         </div>
+
+        {dbError && (
+          <div style={{ background: '#FDF2F2', border: '1px solid #F87171', color: '#991B1B', padding: '12px 16px', borderRadius: '10px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem' }}>
+            <AlertTriangle size={18} /> {dbError}
+          </div>
+        )}
 
         {/* METRICS */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
