@@ -1,8 +1,9 @@
 "use client";
 import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Send, Sparkles, User, Phone, Users, Moon } from 'lucide-react';
+import { CheckCircle2, Send, Sparkles, User, Phone, Users, Moon, Loader2 } from 'lucide-react';
 
 function GuestFormContent() {
   const searchParams = useSearchParams();
@@ -14,44 +15,69 @@ function GuestFormContent() {
   const [nights, setNights] = useState('1');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [waLink, setWaLink] = useState('');
 
   const ADMIN_WHATSAPP = "918777659549";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!guestName || !guestPhone) return;
+    if (!guestName || !guestPhone || submitting) return;
 
     setSubmitting(true);
 
+    const formattedRef = refCode.trim().toUpperCase();
+    const cleanPhone = guestPhone.trim();
+    const cleanName = guestName.trim();
+
+    // Prepare lead data object
+    const leadData = {
+      guest_name: cleanName,
+      phone: cleanPhone,
+      guest_count: parseInt(guestCount) || 1,
+      nights: parseInt(nights) || 1,
+      ref_code: formattedRef,
+      status: 'Enquired',
+      total_amount: 0,
+      commission_amount: 0
+    };
+
+    // 1. Save directly using Supabase client and wait for confirmed response
+    let saveSuccess = false;
     try {
-      // Send data to our server API route (bypasses RLS)
-      await fetch('/api/lead', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          guest_name: guestName.trim(),
-          phone: guestPhone.trim(),
-          guest_count: guestCount,
-          nights: nights,
-          ref_code: refCode.trim().toUpperCase()
-        })
-      });
+      const { error } = await supabase.from('leads').insert([leadData]);
+      if (!error) {
+        saveSuccess = true;
+      } else {
+        console.warn("Direct insert notice, trying server endpoint:", error.message);
+      }
     } catch (err) {
-      console.error("API call error:", err);
+      console.error("Direct insert exception:", err);
     }
 
+    // 2. Backup API attempt if direct insert had a schema issue
+    if (!saveSuccess) {
+      try {
+        await fetch('/api/lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(leadData)
+        });
+      } catch (apiErr) {
+        console.error("Backup API save error:", apiErr);
+      }
+    }
+
+    // 3. Build WhatsApp URL
+    const message = `Hello Terra Stays! 🌿\n\nI scanned the QR code at partner (${formattedRef}) and would like to reserve a stay:\n\n• Guest Name: ${cleanName}\n• Phone: ${cleanPhone}\n• Guests: ${guestCount}\n• Duration: ${nights} night(s)`;
+
+    const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`;
+    
+    setWaLink(whatsappUrl);
     setSubmitting(false);
     setSubmitted(true);
 
-    // Build WhatsApp redirect link
-    const message = `Hello Terra Stays! 🌿\n\nI scanned the QR code at partner (${refCode}) and would like to reserve a stay:\n\n• Guest Name: ${guestName}\n• Phone: ${guestPhone}\n• Guests: ${guestCount}\n• Duration: ${nights} night(s)`;
-
-    const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`;
-
-    // Short delay to let request complete
-    setTimeout(() => {
-      window.location.href = whatsappUrl;
-    }, 300);
+    // 4. Trigger redirect AFTER database record is completely stored
+    window.location.href = whatsappUrl;
   };
 
   return (
@@ -71,17 +97,15 @@ function GuestFormContent() {
         {submitted ? (
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
             <CheckCircle2 size={48} color="#2B6A4B" style={{ margin: '0 auto 1rem auto' }} />
-            <h3 style={{ fontSize: '1.2rem', color: '#1B2B22', marginBottom: '8px' }}>Enquiry Logged! Opening WhatsApp...</h3>
-            <p style={{ color: '#666', fontSize: '0.85rem' }}>If WhatsApp didn't open automatically, tap below:</p>
-            <button 
-              onClick={() => {
-                const message = `Hello Terra Stays! 🌿\n\nI scanned the QR code at partner (${refCode}) and would like to reserve a stay:\n\n• Guest Name: ${guestName}\n• Phone: ${guestPhone}\n• Guests: ${guestCount}\n• Duration: ${nights} night(s)`;
-                window.location.href = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`;
-              }}
-              style={{ marginTop: '1rem', width: '100%', padding: '12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            <h3 style={{ fontSize: '1.2rem', color: '#1B2B22', marginBottom: '8px' }}>Enquiry Logged!</h3>
+            <p style={{ color: '#666', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Opening WhatsApp now...</p>
+            
+            <a 
+              href={waLink}
+              style={{ width: '100%', padding: '12px', background: '#25D366', color: '#fff', borderRadius: '10px', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
               <Send size={16} /> Open WhatsApp Manually
-            </button>
+            </a>
           </div>
         ) : (
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -148,7 +172,15 @@ function GuestFormContent() {
               disabled={submitting}
               style={{ width: '100%', padding: '14px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              {submitting ? "Logging Enquiry..." : "Confirm & Open WhatsApp"} <Send size={16} />
+              {submitting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> Saving Record...
+                </>
+              ) : (
+                <>
+                  Confirm & Open WhatsApp <Send size={16} />
+                </>
+              )}
             </button>
           </form>
         )}

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Create a direct server-side client that bypasses RLS restrictions
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabaseServer = createClient(supabaseUrl, supabaseKey);
@@ -11,7 +10,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { guest_name, phone, guest_count, nights, ref_code } = body;
 
-    // Try full payload first
     const fullPayload = {
       guest_name,
       phone,
@@ -28,9 +26,7 @@ export async function POST(request: Request) {
       .insert([fullPayload])
       .select();
 
-    // Fallback if extra columns don't exist yet
     if (error) {
-      console.log("Full insert notice, trying base payload:", error.message);
       const basePayload = {
         guest_name,
         phone,
