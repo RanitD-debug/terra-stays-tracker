@@ -22,9 +22,15 @@ export default function AdminDashboard() {
     setLoading(true);
     setDbError(null);
 
+    // Clear old browser local cache
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('ts_leads');
+      localStorage.removeItem('ts_affiliates');
+    }
+
     try {
-      const { data: lData, error: lErr } = await supabase.from('leads').select('*').order('id', { ascending: false });
-      const { data: aData, error: aErr } = await supabase.from('affiliates').select('*').order('id', { ascending: false });
+      const { data: lData, error: lErr } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+      const { data: aData, error: aErr } = await supabase.from('affiliates').select('*').order('created_at', { ascending: false });
 
       if (lErr) {
         console.error("Leads query error:", lErr);
@@ -203,7 +209,7 @@ export default function AdminDashboard() {
                 <tbody>
                   {filteredLeads.length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#aaa' }}>No guest scan records found in Supabase database.</td>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#aaa' }}>No guest scan records found in database.</td>
                     </tr>
                   ) : filteredLeads.map((lead, idx) => {
                     const isConfirmed = lead.status === 'Confirmed';
@@ -268,7 +274,7 @@ export default function AdminDashboard() {
                 <tbody>
                   {filteredPartners.length === 0 ? (
                     <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#aaa' }}>No registered partners found in Supabase database.</td>
+                      <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#aaa' }}>No registered partners found in database.</td>
                     </tr>
                   ) : filteredPartners.map((partner, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #F0F0EC' }}>
