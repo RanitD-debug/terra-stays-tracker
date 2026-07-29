@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
-import { RefreshCw, CheckCircle2, X, PauseCircle, Download, Printer } from 'lucide-react';
+import { RefreshCw, CheckCircle2, X, PauseCircle, Download, Printer, Trash2 } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [leads, setLeads] = useState<any[]>([]);
@@ -11,57 +11,35 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'leads' | 'partners'>('leads');
   const [selectedPartnerQR, setSelectedPartnerQR] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const [confirmingLead, setConfirmingLead] = useState<any | null>(null);
   const [inputPayment, setInputPayment] = useState('');
   const [inputCommission, setInputCommission] = useState('');
 
-  const fetchAllData = async () => {
-    // 1. Read Local Backup Data
-    let localLeads: any[] = [];
-    let localAffiliates: any[] = [];
-    try {
-      localLeads = JSON.parse(localStorage.getItem('ts_leads') || '[]');
-      localAffiliates = JSON.parse(localStorage.getItem('ts_affiliates') || '[]');
-    } catch (e) {
-      console.error(e);
-    }
-
-    // 2. Fetch from Supabase
-    let supaLeads: any[] = [];
-    let supaAffiliates: any[] = [];
+  const fetchDatabaseData = async () => {
+    setLoading(true);
 
     try {
-      const { data: lData } = await supabase.from('leads').select('*');
-      const { data: aData } = await supabase.from('affiliates').select('*');
-      if (lData) supaLeads = lData;
-      if (aData) supaAffiliates = aData;
+      const { data: lData } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+      const { data: aData } = await supabase.from('affiliates').select('*').order('created_at', { ascending: false });
+
+      if (lData) setLeads(lData);
+      if (aData) setAffiliates(aData);
     } catch (err) {
-      console.error("Supabase fetch notice:", err);
+      console.error("Database fetch error:", err);
     }
 
-    // 3. Merge both sources (Supabase + LocalStorage) without duplicates
-    const combinedLeadsMap = new Map();
-    [...localLeads, ...supaLeads].forEach(item => {
-      const idKey = item.id || `${item.guest_name}_${item.phone}_${item.ref_code}`;
-      combinedLeadsMap.set(idKey, item);
-    });
-
-    const combinedAffiliatesMap = new Map();
-    [...localAffiliates, ...supaAffiliates].forEach(item => {
-      const codeKey = item.ref_code || item.business_name;
-      combinedAffiliatesMap.set(codeKey, item);
-    });
-
-    const mergedLeads = Array.from(combinedLeadsMap.values()).reverse();
-    const mergedAffiliates = Array.from(combinedAffiliatesMap.values()).reverse();
-
-    setLeads(mergedLeads);
-    setAffiliates(mergedAffiliates);
+    setLoading(false);
   };
 
   useEffect(() => {
-    fetchAllData();
+    // Clear old test storage key on load
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('ts_leads');
+      localStorage.removeItem('ts_affiliates');
+    }
+    fetchDatabaseData();
   }, []);
 
   const handleConfirmBooking = async () => {
@@ -70,51 +48,32 @@ export default function AdminDashboard() {
     const totalAmt = parseFloat(inputPayment) || 0;
     const commAmt = parseFloat(inputCommission) || 0;
 
-    // Update in memory & localStorage
-    const updatedLeads = leads.map(lead => {
-      if (lead.id === confirmingLead.id || (lead.guest_name === confirmingLead.guest_name && lead.phone === confirmingLead.phone)) {
-        return {
-          ...lead,
-          status: 'Confirmed',
-          total_amount: totalAmt,
-          commission_amount: commAmt
-        };
-      }
-      return lead;
-    });
-
-    setLeads(updatedLeads);
-    localStorage.setItem('ts_leads', JSON.stringify(updatedLeads));
-
-    // Update in Supabase
-    try {
-      if (confirmingLead.id) {
-        await supabase
-          .from('leads')
-          .update({ status: 'Confirmed', total_amount: totalAmt, commission_amount: commAmt })
-          .eq('id', confirmingLead.id);
-      }
-    } catch (e) {}
+    // Direct database update
+    await supabase
+      .from('leads')
+      .update({
+        status: 'Confirmed',
+        total_amount: totalAmt,
+        commission_amount: commAmt
+      })
+      .eq('id', confirmingLead.id);
 
     setConfirmingLead(null);
     setInputPayment('');
     setInputCommission('');
+    fetchDatabaseData();
   };
 
   const handlePauseBooking = async (leadId: string) => {
-    const updatedLeads = leads.map(lead => {
-      if (lead.id === leadId) {
-        return { ...lead, status: 'Paused' };
-      }
-      return lead;
-    });
+    await supabase.from('leads').update({ status: 'Paused' }).eq('id', leadId);
+    fetchDatabaseData();
+  };
 
-    setLeads(updatedLeads);
-    localStorage.setItem('ts_leads', JSON.stringify(updatedLeads));
-
-    try {
-      await supabase.from('leads').update({ status: 'Paused' }).eq('id', leadId);
-    } catch (e) {}
+  const clearOldCache = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+      fetchDatabaseData();
+    }
   };
 
   const downloadPartnerQR = () => {
@@ -161,14 +120,23 @@ export default function AdminDashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1 style={{ fontSize: '1.8rem', fontWeight: 300, color: '#1B2B22', margin: 0 }}>Terra Stays Admin Console</h1>
-            <p style={{ color: '#888', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Manual payment approval & partner manager</p>
+            <p style={{ color: '#888', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Connected to Live Supabase Database</p>
           </div>
-          <button 
-            onClick={fetchAllData} 
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
-          >
-            <RefreshCw size={14} /> Refresh Records
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              onClick={clearOldCache} 
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px', background: '#F0EFEA', color: '#555', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
+            >
+              <Trash2 size={14} /> Clear Local Cache
+            </button>
+            <button 
+              onClick={fetchDatabaseData} 
+              disabled={loading}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#1B2B22', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> {loading ? "Syncing..." : "Refresh Live Database"}
+            </button>
+          </div>
         </div>
 
         {/* METRICS */}
@@ -231,7 +199,7 @@ export default function AdminDashboard() {
                 <tbody>
                   {filteredLeads.length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#aaa' }}>No guest scan records found.</td>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#aaa' }}>No guest scan records found in Supabase database.</td>
                     </tr>
                   ) : filteredLeads.map((lead, idx) => {
                     const isConfirmed = lead.status === 'Confirmed';
@@ -296,7 +264,7 @@ export default function AdminDashboard() {
                 <tbody>
                   {filteredPartners.length === 0 ? (
                     <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#aaa' }}>No registered partners found.</td>
+                      <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#aaa' }}>No registered partners found in Supabase database.</td>
                     </tr>
                   ) : filteredPartners.map((partner, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #F0F0EC' }}>
@@ -315,7 +283,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* MODAL TO CONFIRM BOOKING */}
+        {/* CONFIRMATION MODAL */}
         <AnimatePresence>
           {confirmingLead && (
             <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}>
