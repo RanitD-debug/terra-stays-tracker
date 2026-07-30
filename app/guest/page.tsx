@@ -16,7 +16,7 @@ function GuestFormContent() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const ADMIN_WHATSAPP = "91828200889";
+  const ADMIN_WHATSAPP = "918282008089";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
