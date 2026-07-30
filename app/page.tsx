@@ -146,8 +146,8 @@ export default function Home() {
               >
                 <div style={{ background: '#1B2B22', color: '#fff', padding: '10px', borderRadius: '10px' }}><Building2 size={20} /></div>
                 <div>
-                  <h3 style={{ fontSize: '1rem', margin: 0, fontWeight: 600 }}>Business Partner</h3>
-                  <p style={{ color: '#888', fontSize: '0.78rem', margin: '2px 0 0 0' }}>For resorts, boutique stays, cafes, and travel desks</p>
+                  <h3 style={{ fontSize: '1rem', margin: 0, fontWeight: 600 }}>Business</h3>
+                  <p style={{ color: '#888', fontSize: '0.78rem', margin: '2px 0 0 0' }}>For Brands</p>
                 </div>
               </div>
 
@@ -158,7 +158,7 @@ export default function Home() {
                 <div style={{ background: '#2B6A4B', color: '#fff', padding: '10px', borderRadius: '10px' }}><UserCheck size={20} /></div>
                 <div>
                   <h3 style={{ fontSize: '1rem', margin: 0, fontWeight: 600 }}>Individual Affiliate</h3>
-                  <p style={{ color: '#888', fontSize: '0.78rem', margin: '2px 0 0 0' }}>For freelance hosts, influencers, and local guides</p>
+                  <p style={{ color: '#888', fontSize: '0.78rem', margin: '2px 0 0 0' }}>For freelancers, influencers, and local guides</p>
                 </div>
               </div>
             </div>
