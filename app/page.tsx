@@ -119,10 +119,54 @@ export default function Home() {
             </div>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 300, margin: '0 0 1rem 0' }}>Terra Stays Partner Policy</h1>
             
-            <div style={{ fontSize: '0.85rem', color: '#555', lineHeight: '1.6', background: '#FAFAFA', padding: '1.25rem', borderRadius: '12px', border: '1px solid #EDEDE9', marginBottom: '1.5rem', maxHeight: '200px', overflowY: 'auto' }}>
-              <p style={{ margin: '0 0 8px 0' }}>• Earn transparent commissions on all guest stays referred through your standee QR code.</p>
-              <p style={{ margin: '0 0 8px 0' }}>• Payments are calculated and disbursed directly to your registered UPI ID once confirmed by Terra Stays Admin.</p>
-              <p style={{ margin: 0 }}>• QR codes must remain clearly visible at your designated reception or hospitality counter.</p>
+           <div style={{ fontSize: '0.85rem', color: '#555', lineHeight: '1.6', background: '#FAFAFA', padding: '1.25rem', borderRadius: '12px', border: '1px solid #EDEDE9', marginBottom: '1.5rem', maxHeight: '350px', overflowY: 'auto' }}>
+              
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: '#1B2B22' }}>Booking & Payment</h3>
+              <ul style={{ margin: '0 0 16px 0', paddingLeft: '20px' }}>
+                <li>Room tariffs may change depending on season, demand, or special events. Commission will always be calculated on the final confirmed room tariff.</li>
+                <li>Commission is processed after the guest/s checks out.</li>
+                <li>Payment will be transferred to the partner within 5-7 working days after the stay is completed.</li>
+                <li>Bookings are confirmed only after receipt of full or partial payment.</li>
+                <li>No commission will be generated if the booking gets cancelled. If the booking dates gets rescheduled, payment will be processed as per point 2.</li>
+                <li>Guests must book a minimum of 2 nights stay to make the partner eligible for commissions.</li>
+              </ul>
+
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: '#1B2B22' }}>Tariff & Inclusions</h3>
+              <ul style={{ margin: '0 0 16px 0', paddingLeft: '20px' }}>
+                <li>Room tariffs include Breakfast, Lunch, Dinner and Evening Tea.</li>
+                <li>Meals are served as per Terra Mist's standard menu and timings.</li>
+                <li>Guests may additionally place individual food orders via the Terra Mist digital menu app.</li>
+                <li>No commission is applicable or payable to B2B partners on restaurant or food orders.</li>
+              </ul>
+
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: '#1B2B22' }}>Experiences Policy</h3>
+              <ul style={{ margin: '0 0 16px 0', paddingLeft: '20px' }}>
+                <li>All curated experiences (including movie under the stars, private setups, guided hikes, and astrophotography support) are designed, priced, and sold directly by Terra Stays, and billed directly to the guest.</li>
+                <li>Partners may inform guests about experiences but may not quote prices and may not collect payments.</li>
+                <li>No commission apply on experiences.</li>
+              </ul>
+
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: '#1B2B22' }}>Inventory & Availability</h3>
+              <ul style={{ margin: '0 0 16px 0', paddingLeft: '20px' }}>
+                <li>Room availability is subject to prior sale.</li>
+                <li>Terra Mist reserves the right to restrict inventory during peak periods, apply blackout dates, and limit Celestia (Jacuzzi Suite) availability at owner discretion.</li>
+              </ul>
+
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: '#1B2B22' }}>General</h3>
+              <ul style={{ margin: '0 0 16px 0', paddingLeft: '20px' }}>
+                <li>Terra Stays reserves the right to revise rates, policies, and availability without prior notice.</li>
+                <li>All guests referred by the partner must follow Terra Stays' property rules and policies during their stay.</li>
+                <li>This collaboration will remain valid for one (1) year from the date of agreement. The partnership may be renewed upon mutual agreement after the completion of the one-year term.</li>
+                <li>Either party may terminate the partnership earlier by providing 15 days prior written notice. Any commissions for bookings confirmed before termination will still be honored.</li>
+              </ul>
+
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: '#1B2B22' }}>Partner Recognition</h3>
+              <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                <li>Partners will be invited to experience Terra Stays through a complimentary one-night stay for up to two guests, subject to availability.</li>
+                <li>Partner brands will be prominently featured on the official Terra Stays website under the "Official Stay Partners" section, acknowledging their collaboration with the property.</li>
+                <li>Partners generating the highest number of confirmed bookings will receive special recognition across Terra Stays' social media platforms and digital channels.</li>
+              </ul>
+
             </div>
 
             <button 
